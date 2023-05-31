@@ -3,6 +3,7 @@ import nibabel as nib
 import matplotlib.pyplot as plt
 import re
 import numpy as np
+import imutils
 
 def nii_reader(path):
     """
@@ -27,6 +28,19 @@ def visualize_image_mask(image, mask, depth_size):
     # Visualize the slices of the ground truth image
     fig, ax = plt.subplots(1, depth_size, figsize=(25, 8))
     for j in range(depth_size):
+        ax[j].imshow(mask[:,:,j], cmap='gray')  # show one single slice of each image
+        ax[j].axis('off')
+        ax[j].set_title('Slice: {}'.format(j))
+    plt.show()
+
+def visualize_mask(mask):
+    """
+    Visualize a segmentation mask
+    """
+
+    # Visualize the slices of the ground truth image
+    fig, ax = plt.subplots(1, mask.shape[-1], figsize=(25, 8))
+    for j in range(mask.shape[-1]):
         ax[j].imshow(mask[:,:,j], cmap='gray')  # show one single slice of each image
         ax[j].axis('off')
         ax[j].set_title('Slice: {}'.format(j))
@@ -80,6 +94,47 @@ def preprocess_files_acdc(folder, nb_files, test=False):
                         images_ES.append(os.path.join(patient_folder, file))
 
     return images_ED, masks_ED, images_ES, masks_ES
+
+def heart_mask_loader(masks_patients):
+    """
+    Load the masks of the heart from the ACDC dataset
+
+    Parameters:
+    -----------
+    `masks_patients`: list of paths to heart masks
+    """
+
+    masks = [ nii_reader(path) for path in masks_patients ]
+
+    return masks
+
+def align_heart_mask( masks ):
+    """
+    Rotates the heart masks so that the relative position of the LV and RV is always the same
+
+    Parameters:
+    -----------
+    `masks`: list of heart masks
+
+    Returns:
+    --------
+    `rotated_masks`: list of rotated heart masks
+    """
+
+    rotated_masks = []
+
+    for mask in masks:
+        rv_location = np.argwhere(mask == 1)
+        rv_center = np.sum( rv_location, axis=0 )/rv_location.shape[0]
+
+        lv_location = np.argwhere(mask == 3)
+        lv_center = np.sum( lv_location, axis=0 )/lv_location.shape[0]
+
+        rad = np.arctan2(rv_center[0]-lv_center[0], rv_center[1]-lv_center[1])
+
+        rotated_masks.append( imutils.rotate( mask, rad*180/np.pi ) )
+
+    return rotated_masks
 
 def heart_mask_extraction(masks_patients):
     """
