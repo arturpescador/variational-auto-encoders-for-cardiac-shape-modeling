@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import re
 import numpy as np
 import imutils
+from skimage.transform import resize
 
 def nii_reader(path):
     """
@@ -33,7 +34,7 @@ def visualize_image_mask(image, mask, depth_size):
         ax[j].set_title('Slice: {}'.format(j))
     plt.show()
 
-def visualize_mask(mask):
+def visualize_mask(mask, show_axis=False):
     """
     Visualize a 3D segmentation mask
     """
@@ -42,7 +43,7 @@ def visualize_mask(mask):
     fig, ax = plt.subplots(1, mask.shape[-1], figsize=(25, 8))
     for j in range(mask.shape[-1]):
         ax[j].imshow(mask[:,:,j], cmap='gray')  # show one single slice of each image
-        ax[j].axis('off')
+        ax[j].axis(show_axis)
         ax[j].set_title('Slice: {}'.format(j))
     plt.show()
 
@@ -53,6 +54,7 @@ def visualize_2d_mask(mask):
 
     plt.figure( figsize=(4,4) )
     plt.imshow( mask, cmap='gray' )
+    plt.axis(False)
     plt.show()
 
 def visualize_multichannel_mask(mask):
@@ -167,11 +169,9 @@ def crop_heart_mask( masks ):
 
     Returns:
     --------
-    `cropped_masks`: list of cropped heart masks
-    `max_size`: maximum size of the cropped masks
+    `cropped_masks`: list of (square) cropped heart masks
     """   
 
-    max_size = 0
     cropped_masks = []
     for mask in masks:
         not_background = np.argwhere(mask != 0)
@@ -179,16 +179,15 @@ def crop_heart_mask( masks ):
         max_row = np.max(not_background[:, 0])
         min_col = np.min(not_background[:, 1])
         max_col = np.max(not_background[:, 1])
-        cropped_mask = mask[min_row:max_row, min_col:max_col]
+        s = max(max_row - min_row, max_col - min_col)
+        cropped_mask = mask[min_row:min_row+s, min_col:min_col+s]
         cropped_masks.append( cropped_mask )
-
-        max_size = max( max_size, max(cropped_mask.shape) )
     
-    return cropped_masks, max_size
+    return cropped_masks
 
-def pad_heart_mask(masks, s):
+def resize_heart_mask(masks, s=256):
     """
-    Pads images to the desired size
+    Resamples image (nearest neighbour sampling) to the desired size
 
     Parameters:
     -----------
@@ -197,20 +196,11 @@ def pad_heart_mask(masks, s):
 
     Returns:
     --------
-    `padded_masks`: list of padded heart masks
+    `resized_masks`: list of resized heart masks
     """ 
-    padded_masks = []
-    for mask in masks:
-        h = mask.shape[0]
-        w = mask.shape[1]
+    resized_masks = [ resize( mask, (s,s,mask.shape[-1]), order=0, preserve_range=0 ) for mask in masks ]
 
-        b0 = (s-h)//2 # number of values padded before axis 0
-        a0 = s - h - b0
-        b1 = (s-w)//2
-        a1 = s - w - b1
-        padded_masks.append( np.pad(mask, ((b0,a0),(b1,a1),(0,0)), 'constant', constant_values=0) )
-
-    return padded_masks
+    return resized_masks
 
 def convert_3D_to_2D(masks):
     """
