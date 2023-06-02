@@ -1,11 +1,13 @@
 import os
-import nibabel as nib
-import matplotlib.pyplot as plt
 import re
-import numpy as np
-import imutils
-from skimage.transform import resize
 import cv2
+import torch
+import imutils
+import numpy as np
+import nibabel as nib
+import torchio as tio
+import matplotlib.pyplot as plt
+from skimage.transform import resize
 
 def nii_reader(path):
     """
@@ -261,10 +263,35 @@ def heart_mask_extraction(masks):
     for mask in masks:
         corrected_mask = np.round(mask)
         new_mask = np.zeros((masks[0].shape[0], masks[0].shape[1], 4))
-        new_mask[:,:,0] = np.where(corrected_mask == 0, 1, 0)
-        new_mask[:,:,1] = np.where(corrected_mask == 1, 1, 0)
-        new_mask[:,:,2] = np.where(corrected_mask == 2, 1, 0)
-        new_mask[:,:,3] = np.where(corrected_mask == 3, 1, 0)
+        new_mask[:,:,0] = np.where(corrected_mask == 0, 1, 0)       # background
+        new_mask[:,:,1] = np.where(corrected_mask == 1, 1, 0)       # rv
+        new_mask[:,:,2] = np.where(corrected_mask == 2, 1, 0)       # myo
+        new_mask[:,:,3] = np.where(corrected_mask == 3, 1, 0)       # lv
         new_masks.append(new_mask)
 
     return new_masks
+
+def transform_data_subjects(masks):
+    """
+    Transform each mask in a subject to use it in the data loader 
+
+    Parameters:
+    -----------
+    `masks`: list of 4-channel binary masks
+
+    Returns:
+    -----------
+    A list of 4-channel binary masks loaded as subjects 
+
+    """
+
+    subjects = []
+    for mask in masks:
+        # create a torch mask and unsqueeze it to 4D:
+        mask = torch.rand((mask.shape[0], mask.shape[1], mask.shape[2])).unsqueeze(0)
+        
+        # load images whose pixels are categorical labels (masks):
+        subject = tio.Subject(mask = tio.LabelMap(tensor=mask))
+        subjects.append(subject)
+    
+    return tio.SubjectsDataset(subjects=subjects)
