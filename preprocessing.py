@@ -70,7 +70,14 @@ def visualize_multichannel_mask(mask):
 def preprocess_files_acdc(folder, nb_files, test=False):
     """
     Load the images and masks from the ACDC dataset
+
+    Parameters:
+    -----------
+    `folder`: folder containing the images to pre-process
+    `nb_files`: number of files in the folder
+    `test`: boolean variable to specify if it is training or testing data set
     """
+
     images_ED = []
     images_ES = []
     masks_ED = []
@@ -215,6 +222,7 @@ def resize_heart_mask(masks, s=256):
     --------
     `resized_masks`: list of resized heart masks
     """ 
+
     resized_masks = [ resize( mask, (s,s,mask.shape[-1]), order=0, preserve_range=0 ) for mask in masks ]
 
     return resized_masks
@@ -231,50 +239,10 @@ def convert_3D_to_2D(masks):
     --------
     `masks_2D`: list of 2D heart masks
     """ 
+
     concat = np.concatenate( masks, axis=-1 ) # concatenate all the masks in a single 3D array
     masks_2D = [ concat[:,:,i] for i in range(concat.shape[2]) ]
     return masks_2D
-
-
-def heart_mask_extraction_v1(masks_patients):
-    """
-    Extract each cavity of the heart and the myocardium.
-    Eliminates other elements that are not the desired ones.
-
-    Parameters:
-    -----------
-    `images_seg`: segmented images
-
-    Returns:
-    --------
-    `masks_rv`: mask for the right ventricle
-    `masks_myo`: mask for the myocardium
-    `masks_lv`: mask for the left ventricle
-    """
-
-    nb_patients = len(masks_patients)
-    masks_rv = []
-    masks_myo = []
-    masks_lv = []
-
-    # Iterate through the patients to get their masks
-    for i in range(nb_patients):
-        masks = nii_reader(masks_patients[i])
-        seg_rv = []
-        seg_myo = []
-        seg_lv = []
-
-        # Take the mask for each slice of the patient
-        for mask in masks:
-            seg_rv.append(np.where(mask == 1, 1, 0))
-            seg_myo.append(np.where(mask == 2, 1, 0))
-            seg_lv.append(np.where(mask == 3, 1, 0))
-
-        masks_rv.append(seg_rv)    
-        masks_myo.append(seg_myo)
-        masks_lv.append(seg_lv)
-
-    return masks_rv, masks_myo, masks_lv
 
 def heart_mask_extraction(masks):
     """
