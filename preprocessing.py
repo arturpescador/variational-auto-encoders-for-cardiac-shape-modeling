@@ -274,11 +274,12 @@ def heart_mask_extraction(masks):
 
     new_masks = []
     for mask in masks:
+        corrected_mask = np.round(mask)
         new_mask = np.zeros((masks[0].shape[0], masks[0].shape[1], 4))
-        new_mask[:,:,0] = np.where(mask == 0, 1, 0)
-        new_mask[:,:,1] = np.where(mask == 1, 1, 0)
-        new_mask[:,:,2] = np.where(mask == 2, 1, 0)
-        new_mask[:,:,3] = np.where(mask == 3, 1, 0)
+        new_mask[:,:,0] = np.where(corrected_mask == 0, 1, 0)
+        new_mask[:,:,1] = np.where(corrected_mask == 1, 1, 0)
+        new_mask[:,:,2] = np.where(corrected_mask == 2, 1, 0)
+        new_mask[:,:,3] = np.where(corrected_mask == 3, 1, 0)
         new_masks.append(new_mask)
 
     return new_masks
