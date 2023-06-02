@@ -5,6 +5,7 @@ import re
 import numpy as np
 import imutils
 from skimage.transform import resize
+import cv2
 
 def nii_reader(path):
     """
@@ -131,6 +132,22 @@ def heart_mask_loader(masks_patients):
 
     return masks
 
+def rotate(image, angle, center=None, scale=1.0):
+    # grab the dimensions of the image
+    (h, w) = image.shape[:2]
+
+    # if the center is None, initialize it as the center of
+    # the image
+    if center is None:
+        center = (w // 2, h // 2)
+
+    # perform the rotation
+    M = cv2.getRotationMatrix2D(center, angle, scale)
+    rotated = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_NEAREST)
+
+    # return the rotated image
+    return rotated
+
 def align_heart_mask( masks ):
     """
     Rotates the heart masks so that the relative position of the LV and RV is always the same
@@ -155,7 +172,7 @@ def align_heart_mask( masks ):
 
         rad = np.arctan2(rv_center[0]-lv_center[0], rv_center[1]-lv_center[1])
 
-        rotated_masks.append( imutils.rotate( mask, rad*180/np.pi ) )
+        rotated_masks.append( rotate( mask, rad*180/np.pi ) )
 
     return rotated_masks
 
