@@ -21,25 +21,46 @@ class VAE(nn.Module):
         self.e22 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding='same')
         self.e31 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=2, padding='same')
         self.e32 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding='same')
-        self.e4 = nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding='same')
+        self.e41 = nn.Conv2d(in_channels=64, out_channels=96, kernel_size=3, stride=2, padding='same')
+
 
         # Decoder
         self.d11 = nn.Conv2d(in_channels=1, out_channels=96, kernel_size=4, stride=2, padding='same')
+        self.d12 = nn.Conv2d(in_channels=96, out_channels=96, kernel_size=3, stride=1, padding='same')
+        self.d21 = nn.Conv2d(in_channels=96, out_channels=64, kernel_size=4, stride=2, padding='same')
+        self.d22 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding='same')
+        self.d31 = nn.Conv2d(in_channels=64, out_channels=32, kernel_size=4, stride=2, padding='same')
+        self.d32 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding='same')
+        self.d41 = nn.Conv2d(in_channels=32, out_channels=16, kernel_size=4, stride=2, padding='same')
+        self.d42 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=1, padding='same')
 
         # Latent space layers
-        self.fc_mu = nn.Linear(32 * 7 * 7, z_dim)
-        self.fc_log_var = nn.Linear(32 * 7 * 7, z_dim)
+        self.fc1 = nn.Linear(7*7*16, self.z_dim) # fc1 is the mu layer
+        self.fc2 = nn.Linear(7*7*16, self.z_dim) # fc2 is the logvariance layer
 
     def encode(self, x):
-        h = self.encoder(x)
-        h = h.view(h.size(0), -1)  # Flatten
-        return self.fc_mu(h), self.fc_log_var(h)
+        h = F.relu(self.e11(x))
+        h = F.relu(self.e12(h))
+        h = F.relu(self.e21(h))
+        h = F.relu(self.e22(h))
+        h = F.relu(self.e31(h))
+        h = F.relu(self.e32(h))
+        h = F.relu(self.e41(h))
+        h = h.view(h.size(0), -1)
+        return self.fc1(h), self.fc2(h)
 
     def decode(self, z):
-        h = self.decoder_input(z)
-        h = h.view(h.size(0), 32, 7, 7)  # Reshape
-        return self.decoder(h)
-
+        h = F.relu(self.d11(z))
+        h = F.relu(self.d12(h))
+        h = F.relu(self.d21(h))
+        h = F.relu(self.d22(z))
+        h = F.relu(self.d31(h))
+        h = F.relu(self.d32(h))
+        h = F.relu(self.d41(h))
+        h = F.relu(self.d42(h))
+        h = h.view(h.size(0), 1, 28, 28)
+        return torch.sigmoid(h) # the activation function of the output layer is sigmoid
+    
     def reparameterize(self, mu, log_var):
         std = torch.exp(0.5 * log_var)
         eps = torch.randn_like(std)
