@@ -295,3 +295,32 @@ def transform_data_subjects(masks):
         subjects.append(subject)
     
     return tio.SubjectsDataset(subjects=subjects)
+
+def saveDataset( image_list, path, filename ):
+    """
+    Save the dataset.
+
+    Parameters:
+    -----------
+    `image_list`: list of images to save
+    `path`: path to save the dataset
+    `filename`: file name
+    """
+
+    np.save( path+filename, np.array(image_list) )
+
+def loadDataset( path, filename ):
+    """
+    Loads dataset.
+
+    Parameters:
+    -----------
+    `path`: path to save the dataset
+    `filename`: file name
+
+    Returns:
+    --------
+    `dataset`: numpy array with the dataset
+    """
+
+    return np.load( path+filename+'.npy' )

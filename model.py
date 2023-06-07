@@ -6,26 +6,25 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 class VAE(nn.Module):
-    def __init__(self, x_dim, z_dim):
+    def __init__(self, n_rows, n_cols, n_channels):
         super(VAE, self).__init__()
 
-        self.z_dim = z_dim
+        self.n_rows = n_rows
+        self.n_cols = n_cols
+        self.n_channels = n_channels    
+        self.z_dim = 64
         
         # Encoder
-        self.encoder = nn.Sequential(
-            nn.Conv2d(in_channels=x_dim, out_channels=32, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=2, padding=1),
-            nn.ReLU()
-        )
+        self.e11 = nn.Conv2d(in_channels=self.n_channels, out_channels=16, kernel_size=3, stride=2, padding='same')
+        self.e12 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=1, padding='same')
+        self.e21 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=2, padding='same')
+        self.e22 = nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding='same')
+        self.e31 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=2, padding='same')
+        self.e32 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding='same')
+        self.e4 = nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding='same')
 
         # Decoder
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=32, out_channels=32, kernel_size=3, stride=2, padding=1, output_padding=1),
-            nn.ReLU(),
-            nn.ConvTranspose2d(in_channels=32, out_channels=x_dim, kernel_size=3, stride=2, padding=1, output_padding=1),
-            nn.Sigmoid()
-        )
+        self.d11 = nn.Conv2d(in_channels=1, out_channels=96, kernel_size=4, stride=2, padding='same')
 
         # Latent space layers
         self.fc_mu = nn.Linear(32 * 7 * 7, z_dim)
