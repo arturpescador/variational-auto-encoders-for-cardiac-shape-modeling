@@ -6,6 +6,9 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 class VAE(nn.Module):
+
+    """ 
+    # Architecture from the article
     def __init__(self, n_rows, n_cols, n_channels):
         super(VAE, self).__init__()
 
@@ -60,6 +63,42 @@ class VAE(nn.Module):
         h = F.relu(self.d42(h))
         h = h.view(h.size(0), 1, 28, 28)
         return torch.sigmoid(h) # the activation function of the output layer is sigmoid
+    """
+    def __init__(self, n_rows, n_cols, n_channels):
+        super(VAE, self).__init__()
+
+        self.n_rows = n_rows
+        self.n_cols = n_cols
+        self.n_channels = n_channels    
+        self.z_dim = 64
+        
+        # Encoder
+        self.e11 = nn.Conv2d(in_channels=self.n_channels, out_channels=16, kernel_size=3, stride=2)
+        self.e12 = nn.Conv2d(in_channels=16, out_channels=1, kernel_size=3, stride=1)
+
+        # Decoder
+        self.d0 = nn.Linear(self.z_dim, 7*7*1)
+        self.d11 = nn.ConvTranspose2d(in_channels=1, out_channels=16, kernel_size=3, stride=1)
+        self.d12 = nn.ConvTranspose2d(in_channels=16, out_channels=self.n_channels, kernel_size=3, stride=2)
+
+        # Latent space layers
+        self.fc1 = nn.Linear(125*125*1, self.z_dim) # fc1 is the mu layer
+        self.fc2 = nn.Linear(125*125*1, self.z_dim) # fc2 is the logvariance layer
+
+    def encoder(self, x):
+        h = F.relu(self.e11(x))
+        h = F.relu(self.e12(h))
+        print(h.shape)
+        h = h.view(h.size(0), -1)
+        print(h.shape)
+        return self.fc1(h), self.fc2(h)
+
+    def decoder(self, z):
+        h = F.relu(self.d0(z))
+        h = h.view(h.size(0), 1, 125, 125)
+        h = F.relu(self.d11(h))
+        h = F.relu(self.d12(h))
+        return nn.LogSoftmax(h, dim=1)
     
     def reparameterize(self, mu, log_var):
         std = torch.exp(0.5 * log_var)
