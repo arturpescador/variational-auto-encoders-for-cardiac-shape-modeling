@@ -105,5 +105,5 @@ class VAE(nn.Module):
         `loss` : tensor, the loss value.
         """
         reconstruction_error = self.soft_dice_loss(y_true, y_pred)
-        KLD = torch.subtract( torch.add( torch.exp2(log_var), torch.pow(mu, 2) ), torch.add(log_var, 1) )/2
+        KLD = torch.subtract( torch.add( torch.exp(log_var), torch.pow(mu, 2) ), torch.add(log_var, 1) )/2
         return torch.sum( reconstruction_error ) + torch.sum(KLD)
