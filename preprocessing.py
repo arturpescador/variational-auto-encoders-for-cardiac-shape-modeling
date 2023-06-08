@@ -211,7 +211,7 @@ def crop_heart_mask( masks ):
     
     return cropped_masks
 
-def resize_heart_mask(masks, s=256):
+def resize_heart_mask(masks, s=128):
     """
     Resamples image (nearest neighbour sampling) to the desired size
 
