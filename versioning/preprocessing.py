@@ -1,9 +1,13 @@
 import os
-import nibabel as nib
-import matplotlib.pyplot as plt
 import re
-import numpy as np
+import cv2
+import torch
 import imutils
+import numpy as np
+import nibabel as nib
+import torchio as tio
+import matplotlib.pyplot as plt
+from skimage.transform import resize
 
 def nii_reader(path):
     """
@@ -33,7 +37,7 @@ def visualize_image_mask(image, mask, depth_size):
         ax[j].set_title('Slice: {}'.format(j))
     plt.show()
 
-def visualize_mask(mask):
+def visualize_mask(mask, show_axis=False):
     """
     Visualize a 3D segmentation mask
     """
@@ -42,7 +46,7 @@ def visualize_mask(mask):
     fig, ax = plt.subplots(1, mask.shape[-1], figsize=(25, 8))
     for j in range(mask.shape[-1]):
         ax[j].imshow(mask[:,:,j], cmap='gray')  # show one single slice of each image
-        ax[j].axis('off')
+        ax[j].axis(show_axis)
         ax[j].set_title('Slice: {}'.format(j))
     plt.show()
 
@@ -53,6 +57,7 @@ def visualize_2d_mask(mask):
 
     plt.figure( figsize=(4,4) )
     plt.imshow( mask, cmap='gray' )
+    plt.axis(False)
     plt.show()
 
 def visualize_multichannel_mask(mask):
@@ -67,7 +72,14 @@ def visualize_multichannel_mask(mask):
 def preprocess_files_acdc(folder, nb_files, test=False):
     """
     Load the images and masks from the ACDC dataset
+
+    Parameters:
+    -----------
+    `folder`: folder containing the images to pre-process
+    `nb_files`: number of files in the folder
+    `test`: boolean variable to specify if it is training or testing data set
     """
+
     images_ED = []
     images_ES = []
     masks_ED = []
@@ -129,6 +141,22 @@ def heart_mask_loader(masks_patients):
 
     return masks
 
+def rotate(image, angle, center=None, scale=1.0):
+    # grab the dimensions of the image
+    (h, w) = image.shape[:2]
+
+    # if the center is None, initialize it as the center of
+    # the image
+    if center is None:
+        center = (w // 2, h // 2)
+
+    # perform the rotation
+    M = cv2.getRotationMatrix2D(center, angle, scale)
+    rotated = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_NEAREST)
+
+    # return the rotated image
+    return rotated
+
 def align_heart_mask( masks ):
     """
     Rotates the heart masks so that the relative position of the LV and RV is always the same
@@ -153,7 +181,7 @@ def align_heart_mask( masks ):
 
         rad = np.arctan2(rv_center[0]-lv_center[0], rv_center[1]-lv_center[1])
 
-        rotated_masks.append( imutils.rotate( mask, rad*180/np.pi ) )
+        rotated_masks.append( rotate( mask, rad*180/np.pi ) )
 
     return rotated_masks
 
@@ -167,11 +195,9 @@ def crop_heart_mask( masks ):
 
     Returns:
     --------
-    `cropped_masks`: list of cropped heart masks
-    `max_size`: maximum size of the cropped masks
+    `cropped_masks`: list of (square) cropped heart masks
     """   
 
-    max_size = 0
     cropped_masks = []
     for mask in masks:
         not_background = np.argwhere(mask != 0)
@@ -179,16 +205,15 @@ def crop_heart_mask( masks ):
         max_row = np.max(not_background[:, 0])
         min_col = np.min(not_background[:, 1])
         max_col = np.max(not_background[:, 1])
-        cropped_mask = mask[min_row:max_row, min_col:max_col]
+        s = max(max_row - min_row, max_col - min_col)
+        cropped_mask = mask[min_row:min_row+s, min_col:min_col+s]
         cropped_masks.append( cropped_mask )
-
-        max_size = max( max_size, max(cropped_mask.shape) )
     
-    return cropped_masks, max_size
+    return cropped_masks
 
-def pad_heart_mask(masks, s):
+def resize_heart_mask(masks, s=128):
     """
-    Pads images to the desired size
+    Resamples image (nearest neighbour sampling) to the desired size
 
     Parameters:
     -----------
@@ -197,20 +222,12 @@ def pad_heart_mask(masks, s):
 
     Returns:
     --------
-    `padded_masks`: list of padded heart masks
+    `resized_masks`: list of resized heart masks
     """ 
-    padded_masks = []
-    for mask in masks:
-        h = mask.shape[0]
-        w = mask.shape[1]
 
-        b0 = (s-h)//2 # number of values padded before axis 0
-        a0 = s - h - b0
-        b1 = (s-w)//2
-        a1 = s - w - b1
-        padded_masks.append( np.pad(mask, ((b0,a0),(b1,a1),(0,0)), 'constant', constant_values=0) )
+    resized_masks = [ resize( mask, (s,s,mask.shape[-1]), order=0, preserve_range=0 ) for mask in masks ]
 
-    return padded_masks
+    return resized_masks
 
 def convert_3D_to_2D(masks):
     """
@@ -224,50 +241,10 @@ def convert_3D_to_2D(masks):
     --------
     `masks_2D`: list of 2D heart masks
     """ 
+
     concat = np.concatenate( masks, axis=-1 ) # concatenate all the masks in a single 3D array
     masks_2D = [ concat[:,:,i] for i in range(concat.shape[2]) ]
     return masks_2D
-
-
-def heart_mask_extraction_v1(masks_patients):
-    """
-    Extract each cavity of the heart and the myocardium.
-    Eliminates other elements that are not the desired ones.
-
-    Parameters:
-    -----------
-    `images_seg`: segmented images
-
-    Returns:
-    --------
-    `masks_rv`: mask for the right ventricle
-    `masks_myo`: mask for the myocardium
-    `masks_lv`: mask for the left ventricle
-    """
-
-    nb_patients = len(masks_patients)
-    masks_rv = []
-    masks_myo = []
-    masks_lv = []
-
-    # Iterate through the patients to get their masks
-    for i in range(nb_patients):
-        masks = nii_reader(masks_patients[i])
-        seg_rv = []
-        seg_myo = []
-        seg_lv = []
-
-        # Take the mask for each slice of the patient
-        for mask in masks:
-            seg_rv.append(np.where(mask == 1, 1, 0))
-            seg_myo.append(np.where(mask == 2, 1, 0))
-            seg_lv.append(np.where(mask == 3, 1, 0))
-
-        masks_rv.append(seg_rv)    
-        masks_myo.append(seg_myo)
-        masks_lv.append(seg_lv)
-
-    return masks_rv, masks_myo, masks_lv
 
 def heart_mask_extraction(masks):
     """
@@ -279,15 +256,91 @@ def heart_mask_extraction(masks):
 
     Returns:
     --------
-    `mew_masks`: list of 3-channel binary masks
+    `mew_masks`: list of 4-channel binary masks
     """
 
     new_masks = []
     for mask in masks:
-        new_mask = np.zeros((masks[0].shape[0], masks[0].shape[1], 3))
-        new_mask[:,:,0] = np.where(mask == 1, 1, 0)
-        new_mask[:,:,1] = np.where(mask == 2, 1, 0)
-        new_mask[:,:,2] = np.where(mask == 3, 1, 0)
-        new_masks.append(new_mask)
+        corrected_mask = np.round(mask)
+        new_mask = np.zeros((4,masks[0].shape[0], masks[0].shape[1]))
+        new_mask[0,:,:] = np.where(corrected_mask == 0, 1, 0)       # background
+        new_mask[1,:,:] = np.where(corrected_mask == 1, 1, 0)       # rv
+        new_mask[2,:,:] = np.where(corrected_mask == 2, 1, 0)       # myo
+        new_mask[3,:,:] = np.where(corrected_mask == 3, 1, 0)       # lv
+        new_masks.append(np.float32(new_mask))
 
     return new_masks
+
+def transform_data_subjects(masks):
+    """
+    Transform each mask in a subject to use it in the data loader 
+
+    Parameters:
+    -----------
+    `masks`: list of 4-channel binary masks
+
+    Returns:
+    -----------
+    A list of 4-channel binary masks loaded as subjects 
+
+    """
+
+    subjects = []
+    for mask in masks:
+        # create a torch mask and unsqueeze it to 4D:
+        mask = torch.from_numpy(mask)
+        
+        # load images whose pixels are categorical labels (masks):
+        subject = tio.Subject(mask = tio.LabelMap(tensor=mask))
+        subjects.append(subject)
+    
+    return tio.SubjectsDataset(subjects=subjects)
+
+def preprocessingPipeline( path_list ):
+    """
+    Load the masks from the ACDC dataset and applies pre-processing pipeline.
+
+    Parameters:
+    -----------
+    `path_list`: list of paths to heart masks
+
+    Returns:
+    --------
+    `masks`: list of heart masks
+    """
+    masks = heart_mask_extraction( 
+                convert_3D_to_2D( 
+                    resize_heart_mask( 
+                        crop_heart_mask( 
+                            align_heart_mask( 
+                                heart_mask_loader( path_list ) ) ) ) ) )
+    return masks
+
+def saveDataset( image_list, path, filename ):
+    """
+    Save the dataset.
+
+    Parameters:
+    -----------
+    `image_list`: list of images to save
+    `path`: path to save the dataset
+    `filename`: file name
+    """
+
+    np.savez( path+filename, np.array(image_list) )
+
+def loadDataset( path, filename ):
+    """
+    Loads dataset.
+
+    Parameters:
+    -----------
+    `path`: path to save the dataset
+    `filename`: file name
+
+    Returns:
+    --------
+    `dataset`: numpy array with the dataset
+    """
+
+    return np.load( path+filename+'.npz' )['arr_0']
