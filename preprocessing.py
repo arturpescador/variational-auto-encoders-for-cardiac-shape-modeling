@@ -327,7 +327,7 @@ def saveDataset( image_list, path, filename ):
     `filename`: file name
     """
 
-    np.save( path+filename, np.array(image_list) )
+    np.savez( path+filename, np.array(image_list) )
 
 def loadDataset( path, filename ):
     """
@@ -343,4 +343,4 @@ def loadDataset( path, filename ):
     `dataset`: numpy array with the dataset
     """
 
-    return np.load( path+filename+'.npy' )
+    return np.load( path+filename+'.npz' )['arr_0']
