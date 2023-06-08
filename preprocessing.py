@@ -287,8 +287,8 @@ def transform_data_subjects(masks):
 
     subjects = []
     for mask in masks:
-        # create a torch mask and unsqueeze it to 4D:
-        mask = torch.from_numpy(mask)
+        # create a torch mask and unsqueeze it to 4D and use batch dimension
+        mask = torch.from_numpy(mask).unsqueeze(0)
         
         # load images whose pixels are categorical labels (masks):
         subject = tio.Subject(mask = tio.LabelMap(tensor=mask))
