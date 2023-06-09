@@ -2,7 +2,6 @@ import os
 import re
 import cv2
 import torch
-import imutils
 import numpy as np
 import nibabel as nib
 import torchio as tio
@@ -157,7 +156,7 @@ def rotate(image, angle, center=None, scale=1.0):
     # return the rotated image
     return rotated
 
-def align_heart_mask( masks ):
+def align_heart_mask(masks):
     """
     Rotates the heart masks so that the relative position of the LV and RV is always the same
 
@@ -185,7 +184,7 @@ def align_heart_mask( masks ):
 
     return rotated_masks
 
-def crop_heart_mask( masks ):
+def crop_heart_mask(masks):
     """
     Crops excedent background from the heart masks
 
@@ -296,7 +295,7 @@ def transform_data_subjects(masks):
     
     return tio.SubjectsDataset(subjects=subjects)
 
-def preprocessingPipeline( path_list ):
+def preprocessingPipeline(path_list):
     """
     Load the masks from the ACDC dataset and applies pre-processing pipeline.
 
@@ -316,7 +315,7 @@ def preprocessingPipeline( path_list ):
                                 heart_mask_loader( path_list ) ) ) ) ) )
     return masks
 
-def saveDataset( image_list, path, filename ):
+def saveDataset(image_list, path, filename):
     """
     Save the dataset.
 
@@ -329,7 +328,7 @@ def saveDataset( image_list, path, filename ):
 
     np.savez( path+filename, np.array(image_list) )
 
-def loadDataset( path, filename ):
+def loadDataset(path, filename):
     """
     Loads dataset.
 
