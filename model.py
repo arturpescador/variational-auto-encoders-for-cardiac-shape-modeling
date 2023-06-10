@@ -2,6 +2,7 @@ import tensorflow as tf
 import torch
 import torch.nn as nn 
 import torch.nn.functional as F
+from torchdistx.fake import fake_mode
 
 class VAE(nn.Module):
 
@@ -11,22 +12,34 @@ class VAE(nn.Module):
         self.n_rows = n_rows
         self.n_cols = n_cols
         self.n_channels = n_channels    
-        self.z_dim = 64
-
-        self.fc_input_size = 124
-        self.fc_input_channels = 1
+        self.z_dim = 32
         
         # Encoder
-        self.e11 = nn.Conv2d(in_channels=self.n_channels, out_channels=16, kernel_size=3, stride=1)
-        self.e12 = nn.Conv2d(in_channels=16, out_channels=1, kernel_size=3, stride=1)
+        self.e11 = nn.Conv2d(in_channels=self.n_channels, out_channels=48, kernel_size=3, stride=2)
+        self.e12 = nn.Conv2d(in_channels=48, out_channels=48, kernel_size=3, stride=1, padding='same')
+        
+        self.e21 = nn.Conv2d(in_channels=48, out_channels=96, kernel_size=3, stride=2)
+        self.e22 = nn.Conv2d(in_channels=96, out_channels=96, kernel_size=3, stride=1, padding='same')
+        
+        self.e31 = nn.Conv2d(in_channels=96, out_channels=192, kernel_size=3, stride=2)
+        self.e32 = nn.Conv2d(in_channels=192, out_channels=192, kernel_size=3, stride=1, padding='same')
+        
+        self.e41 = nn.Conv2d(in_channels=192, out_channels=384, kernel_size=3, stride=2)
+        self.e42 = nn.Conv2d(in_channels=384, out_channels=384, kernel_size=3, stride=1, padding='same')
 
         # TO DO: pass a fake tensor through the convolutional part of the encoder in order to get output size
+        with fake_mode():
+
 
         # Latent space layers
-        self.fc1 = nn.Linear(self.fc_input_size**2*self.fc_input_channels, self.z_dim) # fc1 is the mu layer
-        self.fc2 = nn.Linear(self.fc_input_size**2*self.fc_input_channels, self.z_dim) # fc2 is the logvariance layer
+        self.fc1 = nn.Linear(..., self.z_dim) # fc1 is the mu layer
+        self.fc2 = nn.Linear(..., self.z_dim) # fc2 is the logvariance layer
 
         # Decoder
+
+
+
+
         self.d0 = nn.Linear(self.z_dim, self.fc_input_size**2*self.fc_input_channels)
         self.d11 = nn.ConvTranspose2d(in_channels=1, out_channels=16, kernel_size=3, stride=1)
         self.d12 = nn.ConvTranspose2d(in_channels=16, out_channels=self.n_channels, kernel_size=3, stride=1)
