@@ -2,7 +2,6 @@ import tensorflow as tf
 import torch
 import torch.nn as nn 
 import torch.nn.functional as F
-from torchdistx.fake import fake_mode
 
 class VAE(nn.Module):
 
@@ -13,6 +12,10 @@ class VAE(nn.Module):
         self.n_cols = n_cols
         self.n_channels = n_channels    
         self.z_dim = 32
+        self.n_blocks = 4
+
+        self.fc_input_channels = self.n_rows // 2 ** (self.n_blocks + 1)
+        self.block_channels = 384
         
         # Encoder
         self.e11 = nn.Conv2d(in_channels=self.n_channels, out_channels=48, kernel_size=3, stride=2)
@@ -27,40 +30,55 @@ class VAE(nn.Module):
         self.e41 = nn.Conv2d(in_channels=192, out_channels=384, kernel_size=3, stride=2)
         self.e42 = nn.Conv2d(in_channels=384, out_channels=384, kernel_size=3, stride=1, padding='same')
 
-        # TO DO: pass a fake tensor through the convolutional part of the encoder in order to get output size
-        with fake_mode():
-
-
         # Latent space layers
-        self.fc1 = nn.Linear(..., self.z_dim) # fc1 is the mu layer
-        self.fc2 = nn.Linear(..., self.z_dim) # fc2 is the logvariance layer
+        self.fc1 = nn.Linear(self.block_channels*self.fc_input_channels**2, self.z_dim) # fc1 is the mu layer
+        self.fc2 = nn.Linear(self.block_channels*self.fc_input_channels**2, self.z_dim) # fc2 is the logvariance layer
 
         # Decoder
+        self.d0 = nn.Linear(self.z_dim, self.block_channels*self.fc_input_channels**2)
 
+        self.d11 = nn.ConvTranspose2d(in_channels=384, out_channels=384, kernel_size=2, stride=2)
+        self.d12 = nn.ConvTranspose2d(in_channels=384, out_channels=192, kernel_size=3, stride=1, padding='same')
 
+        self.d21 = nn.ConvTranspose2d(in_channels=192, out_channels=192, kernel_size=2, stride=2)
+        self.d22 = nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=3, stride=1, padding='same')
 
+        self.d31 = nn.ConvTranspose2d(in_channels=96, out_channels=96, kernel_size=2, stride=2)
+        self.d32 = nn.ConvTranspose2d(in_channels=96, out_channels=48, kernel_size=3, stride=1, padding='same')
 
-        self.d0 = nn.Linear(self.z_dim, self.fc_input_size**2*self.fc_input_channels)
-        self.d11 = nn.ConvTranspose2d(in_channels=1, out_channels=16, kernel_size=3, stride=1)
-        self.d12 = nn.ConvTranspose2d(in_channels=16, out_channels=self.n_channels, kernel_size=3, stride=1)
+        self.d41 = nn.ConvTranspose2d(in_channels=48, out_channels=48, kernel_size=2, stride=2)
+        self.d42 = nn.ConvTranspose2d(in_channels=48, out_channels=self.n_channels, kernel_size=3, stride=1, padding='same')
+
 
     def encoder(self, x):
         h = F.relu(self.e11(x))
         h = F.relu(self.e12(h))
+        h = F.relu(self.e21(h))
+        h = F.relu(self.e22(h))
+        h = F.relu(self.e31(h))
+        h = F.relu(self.e32(h))
+        h = F.relu(self.e41(h))
+        h = F.relu(self.e42(h))
         h = h.view(h.size(0), -1)
         return self.fc1(h), self.fc2(h) # return mu, logvariance
     
     def sampling(self, mu, log_var):
         # this function samples a Gaussian distribution, with average (mu) and standard deviation specified (using log_var)
-        std = torch.sqrt( torch.exp2( log_var ) ) 
+        std = torch.sqrt(torch.exp2( log_var )) 
         eps = torch.randn(self.z_dim) 
         return eps.mul(std).add_(mu) # return z sample
 
     def decoder(self, z):
         h = F.relu(self.d0(z))
-        h = h.view(h.size(0), self.fc_input_channels, self.fc_input_size, self.fc_input_size)
+        h = h.view(-1, self.block_channels, self.fc_input_channels, self.fc_input_channels)
         h = F.relu(self.d11(h))
         h = F.relu(self.d12(h))
+        h = F.relu(self.d21(h))
+        h = F.relu(self.d22(h))
+        h = F.relu(self.d31(h))
+        h = F.relu(self.d32(h))
+        h = F.relu(self.d41(h))
+        h = F.relu(self.d42(h))
         return F.softmax(h, dim=1)
     
     def forward(self, x):
