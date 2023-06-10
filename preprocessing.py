@@ -10,14 +10,29 @@ from skimage.transform import resize
 
 def nii_reader(path):
     """
-    Read a nii file and return the image as a numpy array
+    Read a nii file and return the image as a numpy array.
+
+    Parameters:
+    -----------
+    `path`: path to the nii file
+
+    Returns:
+    --------
+    `nii.get_fdata()`: numpy array, the image
     """
+
     nii = nib.load(path)
     return nii.get_fdata()
 
 def visualize_image_mask(image, mask, depth_size):
     """
-    Visualize an image and its mask
+    Visualize an image and its mask.
+
+    Parameters:
+    -----------
+    `image`: numpy array, the image
+    `mask`: numpy array, the mask
+    `depth_size`: int, the number of slices to visualize
     """
 
     # Visualize the slices of the image
@@ -38,7 +53,12 @@ def visualize_image_mask(image, mask, depth_size):
 
 def visualize_mask(mask, show_axis=False):
     """
-    Visualize a 3D segmentation mask
+    Visualize a 3D segmentation mask.
+
+    Parameters:
+    -----------
+    `mask`: numpy array, the mask
+    `show_axis`: boolean, whether to show the axis or not
     """
 
     # Visualize the slices of the ground truth image
@@ -51,7 +71,11 @@ def visualize_mask(mask, show_axis=False):
 
 def visualize_2d_mask(mask):
     """
-    Visualize a 2D segmentation mask
+    Visualize a 2D segmentation mask.
+
+    Parameters:
+    -----------
+    `mask`: numpy array, the mask
     """
 
     plt.figure( figsize=(4,4) )
@@ -61,11 +85,15 @@ def visualize_2d_mask(mask):
 
 def visualize_multichannel_mask(mask):
     """
-    Visualize a 3-channel segmentation mask, each channel corresponds to a different heart structure
+    Visualize a 3-channel segmentation mask, each channel corresponds to a different heart structure.
+
+    Parameters:
+    -----------
+    `mask`: numpy array, the mask, the axis should be ordered according to PyTorch standard: (channel, height, width)
     """
 
     plt.figure( figsize=(4,4) )
-    plt.imshow( mask )
+    plt.imshow( np.moveaxis( mask, [0,1,2], [2,0,1] )[:,:,1:] )
     plt.show()
 
 def preprocess_files_acdc(folder, nb_files, test=False):
@@ -77,6 +105,13 @@ def preprocess_files_acdc(folder, nb_files, test=False):
     `folder`: folder containing the images to pre-process
     `nb_files`: number of files in the folder
     `test`: boolean variable to specify if it is training or testing data set
+
+    Returns:
+    --------
+    `images_ED`: list of paths to end diastolic images
+    `masks_ED`: list of paths to end diastolic masks
+    `images_ES`: list of paths to end systolic images
+    `masks_ES`: list of paths to end systolic masks
     """
 
     images_ED = []
@@ -141,6 +176,21 @@ def heart_mask_loader(masks_patients):
     return masks
 
 def rotate(image, angle, center=None, scale=1.0):
+    """
+    Rotate an image by a given angle. Adapted from imutils rotate method.
+    
+    Parameters:
+    -----------
+    `image`: image to rotate
+    `angle`: angle to rotate the image
+    `center`: center of the image
+    `scale`: scale factor
+
+    Returns:
+    --------
+    `rotated`: rotated image
+    """
+
     # grab the dimensions of the image
     (h, w) = image.shape[:2]
 
@@ -217,7 +267,7 @@ def resize_heart_mask(masks, s=128):
     Parameters:
     -----------
     `masks`: list of heart masks
-    `s`: size of the output square images
+    `s`: size of the output square images (default: 127)
 
     Returns:
     --------
@@ -308,6 +358,7 @@ def preprocessingPipeline(path_list):
     --------
     `masks`: list of heart masks
     """
+
     masks = heart_mask_extraction( 
                 convert_3D_to_2D( 
                     resize_heart_mask( 

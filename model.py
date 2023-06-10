@@ -15,17 +15,17 @@ class VAE(nn.Module):
         self.n_blocks = 4
         
         # Encoder (convolutional part)
-        self.e11 = nn.Conv2d(in_channels=self.n_channels, out_channels=48, kernel_size=3, stride=2)
-        self.e12 = nn.Conv2d(in_channels=48, out_channels=48, kernel_size=3, stride=1, padding='same')
+        self.e11 = nn.Conv2d(in_channels=self.n_channels, out_channels=48, kernel_size=2, stride=2)
+        self.e12 = nn.Conv2d(in_channels=48, out_channels=48, kernel_size=3, stride=1, padding=1) 
         
-        self.e21 = nn.Conv2d(in_channels=48, out_channels=96, kernel_size=3, stride=2)
-        self.e22 = nn.Conv2d(in_channels=96, out_channels=96, kernel_size=3, stride=1, padding='same')
+        self.e21 = nn.Conv2d(in_channels=48, out_channels=96, kernel_size=2, stride=2)
+        self.e22 = nn.Conv2d(in_channels=96, out_channels=96, kernel_size=3, stride=1, padding=1) # since kernel size is 3, padding of 1 corresponds to 'same'
         
-        self.e31 = nn.Conv2d(in_channels=96, out_channels=192, kernel_size=3, stride=2)
-        self.e32 = nn.Conv2d(in_channels=192, out_channels=192, kernel_size=3, stride=1, padding='same')
+        self.e31 = nn.Conv2d(in_channels=96, out_channels=192, kernel_size=2, stride=2)
+        self.e32 = nn.Conv2d(in_channels=192, out_channels=192, kernel_size=3, stride=1, padding=1)
         
-        self.e41 = nn.Conv2d(in_channels=192, out_channels=384, kernel_size=3, stride=2)
-        self.e42 = nn.Conv2d(in_channels=384, out_channels=384, kernel_size=3, stride=1, padding='same')
+        self.e41 = nn.Conv2d(in_channels=192, out_channels=384, kernel_size=2, stride=2)
+        self.e42 = nn.Conv2d(in_channels=384, out_channels=384, kernel_size=3, stride=1, padding=1)
         
         # Pass a meta tensor through the convolutional layers to determine output size: (batch_size, n_channels, n_rows, n_cols)
         # self.fc_input_size = n_rows = n_cols
@@ -40,16 +40,16 @@ class VAE(nn.Module):
         self.d0 = nn.Linear(self.z_dim, (self.fc_input_size**2)*self.fc_input_channels)
 
         self.d11 = nn.ConvTranspose2d(in_channels=384, out_channels=384, kernel_size=2, stride=2)
-        self.d12 = nn.ConvTranspose2d(in_channels=384, out_channels=192, kernel_size=3, stride=1, padding='same')
+        self.d12 = nn.ConvTranspose2d(in_channels=384, out_channels=192, kernel_size=3, stride=1, padding=1)
 
         self.d21 = nn.ConvTranspose2d(in_channels=192, out_channels=192, kernel_size=2, stride=2)
-        self.d22 = nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=3, stride=1, padding='same')
+        self.d22 = nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=3, stride=1, padding=1)
 
         self.d31 = nn.ConvTranspose2d(in_channels=96, out_channels=96, kernel_size=2, stride=2)
-        self.d32 = nn.ConvTranspose2d(in_channels=96, out_channels=48, kernel_size=3, stride=1, padding='same')
+        self.d32 = nn.ConvTranspose2d(in_channels=96, out_channels=48, kernel_size=3, stride=1, padding=1)
 
         self.d41 = nn.ConvTranspose2d(in_channels=48, out_channels=48, kernel_size=2, stride=2)
-        self.d42 = nn.ConvTranspose2d(in_channels=48, out_channels=self.n_channels, kernel_size=3, stride=1, padding='same')
+        self.d42 = nn.ConvTranspose2d(in_channels=48, out_channels=self.n_channels, kernel_size=3, stride=1, padding=1)
 
 
     def convolutional_encoder(self, x):
@@ -69,15 +69,6 @@ class VAE(nn.Module):
         h = x.clone()
         for layer in layers:
             h = F.elu(layer(h))
-            
-        # h = F.elu(self.e11(x))
-        # h = F.elu(self.e12(h))
-        # h = F.elu(self.e21(h))
-        # h = F.elu(self.e22(h))
-        # h = F.elu(self.e31(h))
-        # h = F.elu(self.e32(h))
-        # h = F.elu(self.e41(h))
-        # h = F.elu(self.e42(h))
 
         return h
     
@@ -153,24 +144,16 @@ class VAE(nn.Module):
         for layer in layers:
             h = F.elu(layer(h))
 
-        # h = F.elu(self.d11(h))
-        # h = F.elu(self.d12(h))
-        # h = F.elu(self.d21(h))
-        # h = F.elu(self.d22(h))
-        # h = F.elu(self.d31(h))
-        # h = F.elu(self.d32(h))
-        # h = F.elu(self.d41(h))
-        # h = F.elu(self.d42(h))
-        
         return F.softmax(h, dim=1)
     
-    def forward(self, x):
+    def forward(self, x, test=False):
         """
         Forward pass through the network.
         
         Parameters
         ----------
         `x` : tensor, the input image.
+        `test` : bool, whether to use the network in test mode or not.
         
         Returns
         -------
@@ -179,7 +162,10 @@ class VAE(nn.Module):
         `log_var` : tensor, the log variance of the latent space
         """
         mu, log_var = self.encoder(x)
-        z = self.sampling(mu, log_var)
+        if test:
+            z = mu
+        else:
+            z = self.sampling(mu, log_var)
         return self.decoder(z), mu, log_var
     
     def soft_dice_loss(self, y_true, y_pred):
@@ -219,3 +205,48 @@ class VAE(nn.Module):
         reconstruction_error = self.soft_dice_loss(y_true, y_pred)
         KLD = torch.subtract( torch.add( torch.exp(log_var), torch.pow(mu, 2) ), torch.add(log_var, 1) )/2
         return torch.sum( reconstruction_error ) + torch.sum(KLD)
+
+    def train_one_epoch(self, optimizer, data_train_loader, epoch, device):
+        """
+        Train the VAE for one epoch.
+
+        Parameters
+        ----------
+        `optimizer` : torch.optim, the optimizer to use.
+        `data_train_loader` : torch.utils.data.DataLoader, the data loader for the training data.
+        `epoch` : int, the current epoch.
+        `device` : torch.device, the device to use for training.
+        """
+
+        train_loss = 0
+        for batch_idx, data in enumerate(data_train_loader):
+
+            data = data.to(device)
+
+            optimizer.zero_grad()
+
+            y, z_mu, z_log_var = self.forward(data) # FILL IN CODE HERE
+            loss_vae = self.loss_function(data, y, z_mu, z_log_var) # FILL IN CODE HERE
+            loss_vae.backward()
+            train_loss += loss_vae.item()
+            optimizer.step() 
+                
+            if batch_idx % 100 == 0:
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * len(data), len(data_train_loader.dataset),
+                100. * batch_idx / len(data_train_loader), loss_vae.item() / len(data)))
+        print('====> Epoch: {} Average loss: {:.4f}'.format(epoch, train_loss / len(data_train_loader.dataset)))
+
+    def predict(self, x, device):
+        """
+        Run VAE in test mode.
+
+        Parameters
+        ----------
+        `x` : tensor, the input images.
+        `device` : torch.device, the device to use for predicting.
+        """
+        x_hat, _, _ = self.forward( x.to(device), test=True )
+        labels = torch.argmax(x_hat, dim=1)
+        one_hot = torch.zeros_like(x_hat).scatter_(1, labels.unsqueeze(1), 1)
+        return one_hot
