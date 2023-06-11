@@ -59,6 +59,7 @@ def calculate_average_dice_loss(model, test_loader, device):
     Returns:
     --------
     `avg_dice_loss` : float, the average soft Dice loss for the test data.
+    `dice_losses` : list, the soft Dice loss for each test image.
     """
 
     # Initialize list to store soft Dice losses
@@ -80,4 +81,24 @@ def calculate_average_dice_loss(model, test_loader, device):
     # Calculate the average soft Dice loss
     avg_dice_loss = np.mean(dice_losses)
 
-    return avg_dice_loss
+    return avg_dice_loss, dice_losses
+
+def plot_loss(val_losses, test_losses):
+    """
+    Plot the validation and test losses over epochs.
+    
+    Parameters:
+    -----------
+    `val_losses` : list, the validation losses over epochs.
+    `test_losses` : list, the test losses over epochs.
+    """
+    epochs = len(val_losses)
+    print("Total epochs: ", epochs)
+
+    plt.plot(range(epochs), val_losses, label='Validation Loss')
+    plt.plot(range(epochs), test_losses, label='Test Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Loss over Epochs')
+    plt.legend()
+    plt.show()
