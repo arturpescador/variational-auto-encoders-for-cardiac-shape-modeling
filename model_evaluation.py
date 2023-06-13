@@ -24,66 +24,7 @@ def visualize(vae_model, input_tensor, device):
         axs[1].imshow( np.moveaxis( output[i], [0,1,2], [2,0,1] )[:,:,1:] )
         plt.show()
 
-def soft_dice_loss(output, target, smooth=1e-5):
-    """
-    Compute the soft Dice loss between the predicted output and the target.
-
-    Args:
-        output (torch.Tensor): Predicted output from the VAE model.
-        target (torch.Tensor): Ground truth data.
-        smooth (float): Smoothing factor to avoid division by zero.
-
-    Returns:
-        torch.Tensor: Soft Dice loss.
-    """
-    # Flatten the predicted output and the target
-    output = output.view(-1)
-    target = target.view(-1)
-
-    intersection = (output * target).sum()
-    dice = (2.0 * intersection + smooth) / (output.sum() + target.sum() + smooth)
-    dice_loss = 1.0 - dice
-
-    return dice_loss
-
-def calculate_average_dice_loss(model, test_loader, device):
-    """
-    Calculate the average soft Dice loss for the test data.
-
-    Parameters:
-    -----------
-    `model` : VAE object, the trained VAE model
-    `test_loader` : torch.utils.data.DataLoader, the data loader for the test data.
-    `device` : torch.device, the device to use for predicting
-
-    Returns:
-    --------
-    `avg_dice_loss` : float, the average soft Dice loss for the test data.
-    `dice_losses` : list, the soft Dice loss for each test image.
-    """
-
-    # Initialize list to store soft Dice losses
-    dice_losses = []
-
-    # Iterate over the test data loader
-    for data in test_loader:
-        # Move the data to the device
-        data = data.to(device)
-
-        # Forward pass through the model to obtain the reconstructed output
-        with torch.no_grad():
-            output, _, _ = model(data)
-
-        # Calculate the soft Dice loss
-        dice_loss = soft_dice_loss(output, data)
-        dice_losses.append(dice_loss.item())
-
-    # Calculate the average soft Dice loss
-    avg_dice_loss = np.mean(dice_losses)
-
-    return avg_dice_loss, dice_losses
-
-def plot_loss(val_losses, test_losses):
+def plot_loss(train_loss, val_loss):
     """
     Plot the validation and test losses over epochs.
     
@@ -92,11 +33,11 @@ def plot_loss(val_losses, test_losses):
     `val_losses` : list, the validation losses over epochs.
     `test_losses` : list, the test losses over epochs.
     """
-    epochs = len(val_losses)
+    epochs = len(train_loss)
     print("Total epochs: ", epochs)
 
-    plt.plot(range(epochs), val_losses, label='Validation Loss')
-    plt.plot(range(epochs), test_losses, label='Test Loss')
+    plt.plot(range(epochs), train_loss, label='train')
+    plt.plot(range(epochs), val_loss, label='validation')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.title('Loss over Epochs')

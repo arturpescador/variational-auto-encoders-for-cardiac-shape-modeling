@@ -168,7 +168,7 @@ class VAE(nn.Module):
             z = self.sampling(mu, log_var)
         return self.decoder(z), mu, log_var
     
-    def soft_dice_loss(self, y_true, y_pred):
+    def soft_dice_loss(self, y_true, y_pred, reduction="sum"):
         """
         Calculate the soft Dice loss between the ground truth and predicted masks.
 
@@ -176,15 +176,22 @@ class VAE(nn.Module):
         ----------
         `y_true` : tensor, the ground truth mask.        
         `y_pred` : tensor, the predicted mask.
+        `reduction` : str, the reduction method to use. Can be "sum" or "mean".
         """
-        smooth = 1.0
+        smooth = 1e-5
         axes =  tuple(range(1, len(y_pred.shape)-1)) # skip batch and class axis when summing
         intersection = torch.sum( y_pred * y_true, dim=axes ) 
         card_ground_truth = torch.sum( y_true, dim=axes )
         card_predicted = torch.sum( y_pred, dim=axes )
-        dice_coeff = (2.0 * intersection + smooth) / (card_ground_truth + card_predicted + smooth) # computed soft dice per sample per class
+        dice_coeff = 1 - (2.0 * intersection + smooth) / (card_ground_truth + card_predicted + smooth) # computed soft dice per sample per class
 
-        loss = 1.0 - torch.mean(dice_coeff) # mean of dice coefficients for all samples and classes
+        if reduction == "sum":
+            loss = torch.sum(dice_coeff)
+        elif reduction == "mean":
+            loss = torch.mean(dice_coeff)
+        else:
+            raise ValueError("reduction must be either sum or mean")
+        
         return loss
     
     def loss_function(self, y_true, y_pred, mu, log_var):
@@ -206,7 +213,7 @@ class VAE(nn.Module):
         KLD = torch.subtract( torch.add( torch.exp(log_var), torch.pow(mu, 2) ), torch.add(log_var, 1) )/2
         return torch.sum( reconstruction_error ) + torch.sum(KLD)
 
-    def train_one_epoch(self, optimizer, data_train_loader, epoch, device):
+    def train_one_epoch(self, optimizer, data_train_loader, data_val_loader, epoch, device):
         """
         Train the VAE for one epoch.
 
@@ -225,21 +232,50 @@ class VAE(nn.Module):
 
             optimizer.zero_grad()
 
-            y, z_mu, z_log_var = self.forward(data) # FILL IN CODE HERE
-            loss_vae = self.loss_function(data, y, z_mu, z_log_var) # FILL IN CODE HERE
+            y, z_mu, z_log_var = self.forward(data) 
+            loss_vae = self.loss_function(data, y, z_mu, z_log_var) 
             loss_vae.backward()
             train_loss += loss_vae.item()
             optimizer.step() 
-                
-            if batch_idx % 100 == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(data_train_loader.dataset),
-                100. * batch_idx / len(data_train_loader), loss_vae.item() / len(data)))
-        print('====> Epoch: {} Average loss: {:.4f}'.format(epoch, train_loss / len(data_train_loader.dataset)))
+
+        avg_train_loss = train_loss / len(data_train_loader.dataset)   
+        print('Epoch: {}\tAverage train loss: {:.4f}'.format(epoch, avg_train_loss))
+
+        # Validation loss
+        avg_val_loss = self.compute_test_loss(data_val_loader, device)
+        print('\t\tAverage validation loss: {:.4f}'.format(avg_val_loss))
+
+        return avg_train_loss, avg_val_loss
+    
+    def compute_test_loss(self, data_loader, device):
+        """
+        Compute the test (or validation) loss.
+
+        Parameters:
+        -----------
+        `data_test_loader` : torch.utils.data.DataLoader, the data loader for the test data.
+        `device` : torch.device, the device to use for testing.
+
+        Returns:
+        --------
+        `avg_test_loss` : float, the average test loss.
+        """
+        
+        loss = 0
+        for batch_idx, data in enumerate(data_loader):
+
+            data = data.to(device)
+
+            y, z_mu, z_log_var = self.forward(data, test=True) 
+            loss_vae = self.loss_function(data, y, z_mu, z_log_var)
+            loss += loss_vae.item()
+
+        avg_loss = loss / len(data_loader.dataset)
+        return avg_loss
 
     def predict(self, x, device):
         """
-        Run VAE in test mode.
+        Run VAE in test mode: classify each pixel into one channel.
 
         Parameters
         ----------
