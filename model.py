@@ -5,13 +5,13 @@ import torch.nn.functional as F
 
 class VAE(nn.Module):
 
-    def __init__(self, n_rows, n_cols, n_channels):
+    def __init__(self, n_rows, n_cols, n_channels, z_dim=32):
         super(VAE, self).__init__()
 
         self.n_rows = n_rows
         self.n_cols = n_cols
         self.n_channels = n_channels    
-        self.z_dim = 32
+        self.z_dim = z_dim
         self.n_blocks = 4
         
         # Encoder (convolutional part)
@@ -179,11 +179,12 @@ class VAE(nn.Module):
         `reduction` : str, the reduction method to use. Can be "sum" or "mean".
         """
         smooth = 1e-5
-        axes =  tuple(range(1, len(y_pred.shape)-1)) # skip batch and class axis when summing
+        axes =  tuple(range(2, len(y_pred.shape))) # skip batch and class axis when summing
         intersection = torch.sum( y_pred * y_true, dim=axes ) 
         card_ground_truth = torch.sum( y_true, dim=axes )
         card_predicted = torch.sum( y_pred, dim=axes )
         dice_coeff = 1 - (2.0 * intersection + smooth) / (card_ground_truth + card_predicted + smooth) # computed soft dice per sample per class
+        dice_coeff = torch.mean( dice_coeff, dim=1 ) # average over channels
 
         if reduction == "sum":
             loss = torch.sum(dice_coeff)
