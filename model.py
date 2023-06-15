@@ -5,14 +5,14 @@ import torch.nn.functional as F
 
 class VAE(nn.Module):
 
-    def __init__(self, n_rows, n_cols, n_channels, z_dim=32):
+    def __init__(self, n_rows, n_cols, n_channels, z_dim=32, lamb=1e-2):
         super(VAE, self).__init__()
 
         self.n_rows = n_rows
         self.n_cols = n_cols
         self.n_channels = n_channels    
         self.z_dim = z_dim
-        self.n_blocks = 4
+        self.lamb = lamb # trade-off parameter for the KLD loss
         
         # Encoder (convolutional part)
         self.e11 = nn.Conv2d(in_channels=self.n_channels, out_channels=48, kernel_size=2, stride=2)
@@ -211,8 +211,8 @@ class VAE(nn.Module):
         `loss` : tensor, the loss value.
         """
         reconstruction_error = self.soft_dice_loss(y_true, y_pred)
-        KLD = torch.subtract( torch.add( torch.exp(log_var), torch.pow(mu, 2) ), torch.add(log_var, 1) )/2
-        return torch.sum( reconstruction_error ) + torch.sum(KLD)
+        KLD = torch.sum( torch.subtract( torch.add( torch.exp(log_var), torch.pow(mu, 2) ), torch.add(log_var, 1) )/2 )
+        return reconstruction_error + self.lamb*KLD
 
     def train_one_epoch(self, optimizer, data_train_loader, data_val_loader, epoch, device):
         """
