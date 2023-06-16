@@ -122,8 +122,8 @@ class VAE(nn.Module):
         `z` : tensor, the sampled latent space
         """
         std = torch.sqrt(torch.exp2( log_var )) 
-        eps = torch.randn(self.z_dim).to(mu.device)
-        return eps.mul(std).add_(mu) # return z sample
+        eps = torch.randn(mu.shape[0], self.z_dim).to(mu.device)
+        return eps.mul(std) + mu # return z sample
 
     def decoder(self, z):
         """
