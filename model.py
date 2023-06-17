@@ -287,6 +287,9 @@ class VAE(nn.Module):
         labels = torch.argmax(x_hat, dim=1)
         one_hot = torch.zeros_like(x_hat).scatter_(1, labels.unsqueeze(1), 1)
         return one_hot
+    
+
+
 
     def generate_samples(self, num_samples, device):
         """
@@ -301,9 +304,9 @@ class VAE(nn.Module):
         --------
         `samples` : tensor, the generated samples.
         """
-        with torch.no_grad():
-            epsilon = torch.randn(num_samples, self.z_dim).to(device)
-            samples = self.decoder(epsilon)
-            samples = torch.argmax(samples, dim=1)
+        epsilon = torch.randn(num_samples, self.z_dim).to(device)
+        samples = self.decoder(epsilon)
+        samples = torch.argmax(samples, dim=1)
 
         return samples
+    
