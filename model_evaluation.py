@@ -94,3 +94,22 @@ def check_distribution(mus, logvars):
 
     print(f"Mu: mean={mu_mean}, std={mu_std}") # Check that the mean and std are close to 0 and 1 respectively
     print(f"Std: mean={std_mean}, std={std_std}") # Check that the mean and std are close to 0 and 1 respectively
+
+
+def visualize_generated_images(generated_samples):
+    """
+    Visualize the generated samples.
+
+    Parameters:
+    -----------
+    `generated_samples` : numpy array, the generated samples
+    """
+    num_samples = generated_samples.shape[0]
+    fig, axs = plt.subplots(1, num_samples, figsize=(num_samples * 2, 2))
+
+    for i in range(num_samples):
+        axs[i].imshow(np.moveaxis(generated_samples[i], [0, 1, 2], [2, 0, 1]))
+        axs[i].axis('off')
+
+    plt.show()
+
