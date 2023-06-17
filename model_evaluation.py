@@ -1,6 +1,9 @@
-import torch 
 import numpy as np
 import matplotlib.pyplot as plt
+import torch 
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+from scipy.stats import norm
 import preprocessing as pre
 
 def visualize(vae_model, input_tensor, device):
@@ -43,3 +46,51 @@ def plot_loss(train_loss, val_loss):
     plt.title('Loss over Epochs')
     plt.legend()
     plt.show()
+
+def generate_latent(model, dataloader, device):
+    """
+    Generate latent space vectors for all the images in the dataset
+
+    Parameters:
+    -----------
+    model: VAE model
+    dataloader: PyTorch dataloader
+    device: torch.device
+
+    Returns:
+    --------
+    mus: torch.Tensor containing the mu vectors for each image
+    logvars: torch.Tensor containing the logvar vectors for each image       
+    """
+    mus = []
+    logvars = []
+    model.eval()  # Set the model to evaluation mode
+    with torch.no_grad():  # No need to track gradients
+        for data in dataloader:
+            mu, logvar = model.encoder(data.to(device))  # Get mu and logvar
+            mus.append(mu)
+            logvars.append(logvar)
+    mus = torch.cat(mus, dim=0)  # Concatenate all mu and logvar tensors
+    logvars = torch.cat(logvars, dim=0)
+    return mus, logvars
+
+def check_distribution(mus, logvars):
+    """
+    Check that the distribution of the latent space vectors is close to a standard normal distribution
+
+    Parameters:
+    -----------
+    mus: torch.Tensor containing the mu vectors for each image
+    logvars: torch.Tensor containing the logvar vectors for each image
+    """
+    mus = mus.cpu().numpy()
+    stds = np.sqrt(np.exp(logvars.cpu().numpy()))  # Calculate standard deviations from log variances
+
+    mu_mean = np.mean(mus)
+    mu_std = np.std(mus)
+
+    std_mean = np.mean(stds)
+    std_std = np.std(stds)
+
+    print(f"Mu: mean={mu_mean}, std={mu_std}") # Check that the mean and std are close to 0 and 1 respectively
+    print(f"Std: mean={std_mean}, std={std_std}") # Check that the mean and std are close to 0 and 1 respectively
