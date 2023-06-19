@@ -113,71 +113,57 @@ def visualize_generated_images(generated_samples):
 
     plt.show()
 
-def calculate_losses(model, test_loader, device, loss_function):
+import torch
+import numpy as np
+
+def sorted_recon_losses(model, test_loader, device):
     """
-    Calculate the reconstruction losses for all the images in the test set.
+    Computes the reconstruction loss for each image in the test set and sorts them in ascending order.
     
-    Parameters:
-    -----------
-    `model` : VAE object, the trained VAE model
-    `test_loader` : PyTorch dataloader, the test set
-    `device` : torch.device, the device to use for predicting
-    `loss_function` : function, the loss function to use for calculating the reconstruction loss
-    
-    Returns:
-    --------    
-    `reconstruction_losses` : list, the reconstruction losses for all the images in the test set
+    Parameters
+    ----------
+    model : VAE - trained model
+    test_loader : DataLoader - test set
+    device : str - device on which to run the computations
+
+    Returns
+    -------
+    recon_losses : np.array - sorted reconstruction losses
+    original_images : np.array - original images
+    reconstructed_images : np.array - reconstructed images
     """
+    
+    # List to store reconstruction losses, original images and their reconstructions
+    recon_losses = []
+    original_images = []
+    reconstructed_images = []
+
+    # Model in evaluation mode
     model.eval()
-    reconstruction_losses = []
-    originals = []
-    reconstructions = []
+
+    # Loop over all batches in the test set
     with torch.no_grad():
-        for i, data in enumerate(test_loader):
-            data = data.to(device)
-            recon_batch, mu, logvar = model(data)
-            recon_loss = loss_function(recon_batch, data, mu, logvar)
-            reconstruction_losses.append(recon_loss.item())
-            originals.append(data)
-            reconstructions.append(recon_batch)
+        for batch in test_loader:
+            # Move batch to the device
+            batch = batch.to(device)
 
-    reconstruction_losses = np.array(reconstruction_losses)
-    sorted_indices = np.argsort(reconstruction_losses)
-    best_5_indices = sorted_indices[:5]
-    worst_5_indices = sorted_indices[-5:]
+            # Forward pass and reconstruct the input
+            recon, _, _ = model(batch)
 
-    originals = [img for batch in originals for img in batch]
-    reconstructions = [img for batch in reconstructions for img in batch]
+            # Compute reconstruction loss (MSE)
+            loss = model.soft_dice_loss(recon, batch, reduction ="none").detach().cpu()
 
-    return best_5_indices, worst_5_indices, originals, reconstructions
+            # Append loss, original images and their reconstructions to lists
+            recon_losses.append(loss)
+            original_images.append(batch.detach().cpu())
+            reconstructed_images.append(recon.detach().cpu())
 
-def plot_reconstructions(indices, originals, reconstructions, title):
-    """
-    Plot the original and reconstructed images for the given indices.
+    # Concatenate all batches
+    recon_losses = np.concatenate(recon_losses)
+    original_images = torch.cat(original_images)
+    reconstructed_images = torch.cat(reconstructed_images)
+
+    # Sort by reconstruction loss
+    indices = np.argsort(recon_losses)
     
-    Parameters:
-    -----------
-    `indices` : list, the indices of the images to plot
-    `originals` : list, the original images
-    `reconstructions` : list, the reconstructed images
-    `title` : str, the title of the plot
-    """
-    fig, axes = plt.subplots(2, len(indices), figsize=(20, 8))
-    for i, idx in enumerate(indices):
-        axes[0, i].imshow(originals[idx].cpu().numpy()[:3].transpose(1, 2, 0))
-        axes[0, i].set_title("Original")
-        axes[1, i].imshow(reconstructions[idx].cpu().numpy()[:3].transpose(1, 2, 0))
-        axes[1, i].set_title(title)
-
-    plt.show()
-
-def vae_loss_function(recon_x, x, mu, logvar):
-    """
-    VAE loss function which is the sum of a reconstruction term, and a 
-    KL-divergence term.
-    """
-    # Reconstruction term
-    MSE = torch.nn.functional.mse_loss(recon_x, x, reduction='sum')
-    # KL divergence term
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-    return MSE + KLD
+    return recon_losses, original_images, reconstructed_images, indices
