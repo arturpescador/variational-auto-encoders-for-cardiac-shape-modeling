@@ -167,3 +167,41 @@ def sorted_recon_losses(model, test_loader, device):
     indices = np.argsort(recon_losses)
     
     return recon_losses, original_images, reconstructed_images, indices
+
+def visualize_generated_images1(generated_samples):
+    """
+    Visualize the generated samples.
+
+    Parameters:
+    -----------
+    `generated_samples` : tensor, the generated samples.
+    """
+    samples = generated_samples.cpu().detach().numpy()
+    
+
+    fig, axs = plt.subplots(1, len(samples), figsize=(len(samples) * 2, 2))
+
+    for i in range(len(samples)):
+        axs[i].imshow(samples[i])
+
+    
+    plt.show()
+
+
+def visualize_generated_images2(imgs):
+    """
+    Visualize the generated samples.
+
+    Parameters:
+    -----------
+    `generated_samples` : tensor, the generated samples.
+    """
+    images = imgs.cpu().detach().numpy()
+    r = 1
+    c = images.shape[0]
+    fig, axs = plt.subplots(r, c)
+    for j in range(c):
+      #black and white images
+      axs[j].imshow(images[j, :,:],)
+      axs[j].axis('off')
+    plt.show()

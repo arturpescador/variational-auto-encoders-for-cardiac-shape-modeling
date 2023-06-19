@@ -312,3 +312,44 @@ class VAE(nn.Module):
 
         return samples
     
+
+    def generate_samples1(self, num_samples, device):
+        """
+        Generate samples from the VAE model.
+
+        Parameters:
+        -----------
+        `num_samples` : int, the number of samples to generate.
+        `device` : torch.device, the device to use for generating samples.
+
+        Returns:
+        --------
+        `samples` : tensor, the generated samples.
+        """
+
+        epsilon = torch.randn(num_samples, self.z_dim).to(device)
+        samples = self.decoder(epsilon)
+        samples = torch.argmax(samples, dim=1)
+
+        return samples
+    
+
+    def generate_samples2(self, num_samples, device):
+        """
+        Generate samples from the VAE model.
+
+        Parameters:
+        -----------
+        `num_samples` : int, the number of samples to generate.
+        `device` : torch.device, the device to use for generating samples.
+
+        Returns:
+        --------
+        `samples` : tensor, the generated samples.
+        """
+        epsilon = self.sampling(torch.zeros(num_samples,self.z_dim),torch.zeros(num_samples,self.z_dim)).to(device)
+        imgs_generated = self.decoder(epsilon)
+
+        return imgs_generated
+    
+
