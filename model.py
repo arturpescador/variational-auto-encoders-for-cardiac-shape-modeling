@@ -190,6 +190,8 @@ class VAE(nn.Module):
             loss = torch.sum(dice_coeff)
         elif reduction == "mean":
             loss = torch.mean(dice_coeff)
+        elif reduction == "none":
+            loss = dice_coeff
         else:
             raise ValueError("reduction must be either sum or mean")
         
