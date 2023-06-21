@@ -64,16 +64,20 @@ def generate_latent(model, dataloader, device):
     """
     mus = []
     logvars = []
+    
     model.eval()  # Set the model to evaluation mode
+    
     with torch.no_grad():  # No need to track gradients
         for data in dataloader:
             mu, logvar = model.encoder(data.to(device))  # Get mu and logvar
             mus.append(mu)
             logvars.append(logvar)
+    
     mus = torch.cat(mus, dim=0)  # Concatenate all mu and logvar tensors
     logvars = torch.cat(logvars, dim=0)
+    
     return mus, logvars
-
+    
 def check_distribution(mus, logvars):
     """
     Check that the distribution of the latent space vectors is close to a standard normal distribution
@@ -83,8 +87,9 @@ def check_distribution(mus, logvars):
     mus: torch.Tensor containing the mu vectors for each image
     logvars: torch.Tensor containing the logvar vectors for each image
     """
+
     mus = mus.cpu().numpy()
-    stds = np.sqrt(np.exp(logvars.cpu().numpy()))  # Calculate standard deviations from log variances
+    stds = np.sqrt(np.exp2(logvars.cpu().numpy()))  # Calculate standard deviations from log variances
 
     mu_mean = np.mean(mus)
     mu_std = np.std(mus)
@@ -94,6 +99,7 @@ def check_distribution(mus, logvars):
 
     print(f"Mu: mean={mu_mean}, std={mu_std}") # Check that the mean and std are close to 0 and 1 respectively
     print(f"Std: mean={std_mean}, std={std_std}") # Check that the mean and std are close to 0 and 1 respectively
+    
 
 
 def visualize_generated_images(generated_samples):
@@ -122,15 +128,15 @@ def sorted_recon_losses(model, test_loader, device):
     
     Parameters
     ----------
-    model : VAE - trained model
-    test_loader : DataLoader - test set
-    device : str - device on which to run the computations
+    `model` : VAE - trained model
+    `test_loader` : DataLoader - test set
+    `device` : str - device on which to run the computations
 
     Returns
     -------
-    recon_losses : np.array - sorted reconstruction losses
-    original_images : np.array - original images
-    reconstructed_images : np.array - reconstructed images
+    `recon_losses` : np.array - sorted reconstruction losses
+    `original_images` : np.array - original images
+    `reconstructed_images` : np.array - reconstructed images
     """
     
     # List to store reconstruction losses, original images and their reconstructions
@@ -167,6 +173,21 @@ def sorted_recon_losses(model, test_loader, device):
     indices = np.argsort(recon_losses)
     
     return recon_losses, original_images, reconstructed_images, indices
+
+def visualize_generated_images(generated_images):
+    """
+    Visualize the generated images.
+
+    Parameters:
+    -----------
+    `generated_images` : tensor, the generated samples.
+    """
+    generated_images = generated_images.cpu().detach().numpy()
+
+    fig, axs = plt.subplots(1, 5, figsize=(20,4))
+    for i in range(0, len(generated_images)):
+        axs[i].imshow(np.moveaxis(generated_images[i], [0, 1, 2], [2, 0, 1])[:, :, 1:])
+        axs[i].axis('off')  # Turn off the axis labels
 
 def visualize_generated_images1(generated_samples):
     """

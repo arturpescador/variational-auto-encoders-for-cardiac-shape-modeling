@@ -291,8 +291,26 @@ class VAE(nn.Module):
         one_hot = torch.zeros_like(x_hat).scatter_(1, labels.unsqueeze(1), 1)
         return one_hot
     
+    def generate_images(self, n_samples, device):
+        """
+        Generate samples from the VAE model according to a standard
+        Gaussian distribution of mean 0 and standard deviation 1.
 
+        Parameters:
+        -----------
+        `num_samples` : int, the number of samples to generate.
+        `device` : torch.device, the device to use for generating samples.
 
+        Returns:
+        --------
+        `samples` : tensor, the generated samples.
+        """
+        z = torch.randn(n_samples, self.z_dim).to(device)
+        x_hat = self.decoder(z)
+        labels = torch.argmax(x_hat, dim=1)
+        one_hot = torch.zeros_like(x_hat).scatter_(1, labels.unsqueeze(1), 1)
+        
+        return one_hot
 
     def generate_samples(self, num_samples, device):
         """
