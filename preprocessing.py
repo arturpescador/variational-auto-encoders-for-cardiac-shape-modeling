@@ -267,7 +267,7 @@ def resize_heart_mask(masks, s=128):
     Parameters:
     -----------
     `masks`: list of heart masks
-    `s`: size of the output square images (default: 127)
+    `s`: size of the output square images (default: 128)
 
     Returns:
     --------

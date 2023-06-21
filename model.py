@@ -224,6 +224,7 @@ class VAE(nn.Module):
         ----------
         `optimizer` : torch.optim, the optimizer to use.
         `data_train_loader` : torch.utils.data.DataLoader, the data loader for the training data.
+        `data_val_loader` : torch.utils.data.DataLoader, the data loader for the validation data.
         `epoch` : int, the current epoch.
         `device` : torch.device, the device to use for training.
         """
