@@ -278,6 +278,32 @@ def resize_heart_mask(masks, s=128):
 
     return resized_masks
 
+def label_slices(masks):
+    """
+    Label a mask 3D from 0 to 1
+    
+    Parameters:
+    -----------
+    `masks_labels`: a list containing the labels for each slice
+    `mask_3D`: mask 3D with slices to be labeled
+    `patient`: patient id
+
+    Returns:
+    --------
+    `masks_labels`: updated list of labels with the labels for patient
+    """
+
+    masks_labels = []
+    for patient, mask in enumerate(masks):
+        n_slices = mask.shape[2]
+        space_labels = 1 / (n_slices - 1)  # space between labels, excluding the last slice
+        
+        for i in range(n_slices):
+            label = round(i * space_labels, 2) # round to up to 2 decimals
+            masks_labels.append([patient, label])
+    
+    return masks_labels
+
 def convert_3D_to_2D(masks):
     """
     Disassemble frames as independent 2D images
@@ -357,15 +383,15 @@ def preprocessingPipeline(path_list):
     Returns:
     --------
     `masks`: list of heart masks
+    `masks_labels`: list with the labels for each 3D mask slice
     """
 
-    masks = heart_mask_extraction( 
-                convert_3D_to_2D( 
-                    resize_heart_mask( 
-                        crop_heart_mask( 
-                            align_heart_mask( 
-                                heart_mask_loader( path_list ) ) ) ) ) )
-    return masks
+    masks = resize_heart_mask(crop_heart_mask(align_heart_mask(heart_mask_loader(path_list))))
+    masks_labels = label_slices(masks)
+    
+    masks = heart_mask_extraction(convert_3D_to_2D(masks))
+
+    return masks, masks_labels
 
 def saveDataset(image_list, path, filename):
     """
