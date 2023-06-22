@@ -216,7 +216,7 @@ class VAE(nn.Module):
         KLD = torch.sum( torch.subtract( torch.add( torch.exp(log_var), torch.pow(mu, 2) ), torch.add(log_var, 1) )/2 )
         return reconstruction_error + self.lamb*KLD
 
-    def train_one_epoch(self, optimizer, data_train_loader, data_val_loader, epoch, device):
+    def train_one_epoch(self, optimizer, data_train_loader, data_val_loader, epoch, device, verbose=True):
         """
         Train the VAE for one epoch.
 
@@ -227,6 +227,7 @@ class VAE(nn.Module):
         `data_val_loader` : torch.utils.data.DataLoader, the data loader for the validation data.
         `epoch` : int, the current epoch.
         `device` : torch.device, the device to use for training.
+        `verbose` : bool, whether to print the loss values or not.
         """
 
         train_loss = 0
@@ -243,11 +244,13 @@ class VAE(nn.Module):
             optimizer.step() 
 
         avg_train_loss = train_loss / len(data_train_loader.dataset)   
-        print('Epoch: {}\tAverage train loss: {:.4f}'.format(epoch, avg_train_loss))
+        if verbose:
+            print('Epoch: {}\tAverage train loss: {:.4f}'.format(epoch, avg_train_loss))
 
         # Validation loss
         avg_val_loss = self.compute_test_loss(data_val_loader, device)
-        print('\t\tAverage validation loss: {:.4f}'.format(avg_val_loss))
+        if verbose:
+            print('\t\tAverage validation loss: {:.4f}'.format(avg_val_loss))
 
         return avg_train_loss, avg_val_loss
     
@@ -264,7 +267,7 @@ class VAE(nn.Module):
         --------
         `avg_test_loss` : float, the average test loss.
         """
-        
+
         loss = 0
         for batch_idx, data in enumerate(data_loader):
 
@@ -286,6 +289,7 @@ class VAE(nn.Module):
         `x` : tensor, the input images.
         `device` : torch.device, the device to use for predicting.
         """
+
         x_hat, _, _ = self.forward( x.to(device), test=True )
         labels = torch.argmax(x_hat, dim=1)
         one_hot = torch.zeros_like(x_hat).scatter_(1, labels.unsqueeze(1), 1)
@@ -293,7 +297,7 @@ class VAE(nn.Module):
     
     def generate_images(self, n_samples, device):
         """
-        Generate samples from the VAE model according to a standard
+        Generate images by sampling the latent space according to a 
         Gaussian distribution of mean 0 and standard deviation 1.
 
         Parameters:
@@ -305,70 +309,12 @@ class VAE(nn.Module):
         --------
         `samples` : tensor, the generated samples.
         """
+
         z = torch.randn(n_samples, self.z_dim).to(device)
         x_hat = self.decoder(z)
         labels = torch.argmax(x_hat, dim=1)
         one_hot = torch.zeros_like(x_hat).scatter_(1, labels.unsqueeze(1), 1)
         
-        return one_hot
-
-    def generate_samples(self, num_samples, device):
-        """
-        Generate samples from the VAE model.
-
-        Parameters:
-        -----------
-        `num_samples` : int, the number of samples to generate.
-        `device` : torch.device, the device to use for generating samples.
-
-        Returns:
-        --------
-        `samples` : tensor, the generated samples.
-        """
-        epsilon = torch.randn(num_samples, self.z_dim).to(device)
-        samples = self.decoder(epsilon)
-        samples = torch.argmax(samples, dim=1)
-
-        return samples
-    
-
-    def generate_samples1(self, num_samples, device):
-        """
-        Generate samples from the VAE model.
-
-        Parameters:
-        -----------
-        `num_samples` : int, the number of samples to generate.
-        `device` : torch.device, the device to use for generating samples.
-
-        Returns:
-        --------
-        `samples` : tensor, the generated samples.
-        """
-
-        epsilon = torch.randn(num_samples, self.z_dim).to(device)
-        samples = self.decoder(epsilon)
-        samples = torch.argmax(samples, dim=1)
-
-        return samples
-    
-
-    def generate_samples2(self, num_samples, device):
-        """
-        Generate samples from the VAE model.
-
-        Parameters:
-        -----------
-        `num_samples` : int, the number of samples to generate.
-        `device` : torch.device, the device to use for generating samples.
-
-        Returns:
-        --------
-        `samples` : tensor, the generated samples.
-        """
-        epsilon = self.sampling(torch.zeros(num_samples,self.z_dim),torch.zeros(num_samples,self.z_dim)).to(device)
-        imgs_generated = self.decoder(epsilon)
-
-        return imgs_generated
+        return x_hat, one_hot
     
 

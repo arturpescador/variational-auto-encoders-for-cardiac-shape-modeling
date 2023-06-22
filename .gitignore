@@ -3,5 +3,8 @@ ACDC
 ACDC.zip
 *.npz
 
+# todo
+setup.py
+
 # personal files
 tp_ae_vae_pytorch_VALENCA_DE_LORENCI_Alice.ipynb
