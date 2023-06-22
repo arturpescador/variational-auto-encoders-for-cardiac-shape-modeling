@@ -299,7 +299,7 @@ def label_slices(masks):
         space_labels = 1 / (n_slices - 1)  # space between labels, excluding the last slice
         
         for i in range(n_slices):
-            label = round(i * space_labels, 2) # round to up to 2 decimals
+            label = round(i * space_labels, 1) # round to up to 1 decimal
             masks_labels.append([patient, label])
     
     return masks_labels
