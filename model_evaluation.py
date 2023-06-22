@@ -99,8 +99,6 @@ def check_distribution(mus, logvars):
 
     print(f"Mu: mean={mu_mean}, std={mu_std}") # Check that the mean and std are close to 0 and 1 respectively
     print(f"Std: mean={std_mean}, std={std_std}") # Check that the mean and std are close to 0 and 1 respectively
-    
-
 
 def visualize_generated_images(generated_samples):
     """
@@ -118,9 +116,6 @@ def visualize_generated_images(generated_samples):
         axs[i].axis('off')
 
     plt.show()
-
-import torch
-import numpy as np
 
 def sorted_recon_losses(model, test_loader, device):
     """
@@ -173,6 +168,111 @@ def sorted_recon_losses(model, test_loader, device):
     indices = np.argsort(recon_losses)
     
     return recon_losses, original_images, reconstructed_images, indices
+
+def retrieve_2D_labeled_images(model, input_tensor, labels_tensor, device):
+    """
+    Retrieve images according to their corresponding labels
+
+    Parameters:
+    -----------
+    `model`: VAE object, the trained VAE model
+    `input_tensor` : tensor, input images
+    `labels_tensor`: tensor, patient identification and labels
+    `device` : torch.device, the device to use for predicting
+
+    Returns
+    -------
+    `input_lower` : ndarray, input images for lower slices
+    `input_middle` : ndarray, input images for middle slices
+    `input_upper` : ndarray, input images for upper slices
+    `output_lower` : ndarray, output images for lower slices
+    `output_middle` : ndarray, output images for middle slices
+    `output_upper` : ndarray, output images for upper slices
+    """
+    input = input_tensor.cpu().detach().numpy()
+    labels = labels_tensor.cpu().detach().numpy()
+    output_tensor = model.predict(input_tensor, device)
+    output = output_tensor.cpu().detach().numpy()
+
+    lower_idxs = []
+    middle_idxs = []
+    upper_idxs = []
+
+    # Calculates whether is a lower, middle or upper slice based on the labels
+    for position, label in enumerate(labels[:,1]):
+        if (label == 0.):
+            lower_idxs.append(position)
+        elif (label >= 0.4 and label < 0.6):
+            middle_idxs.append(position)
+        elif (label == 1.):
+            upper_idxs.append(position)
+    
+    # Computes the images for the positions of the indices
+    input_lower = input[lower_idxs]
+    input_middle = input[middle_idxs]
+    input_upper = input[upper_idxs]
+    
+    output_lower = output[lower_idxs]
+    output_middle = output[middle_idxs]
+    output_upper = output[upper_idxs]
+
+    return input_lower, input_middle, input_upper, output_lower, output_middle, output_upper
+
+def transform_tensor_list(tensor_list):
+    """
+    Transform a tensor list to keep original dimensions
+
+    Parameters:
+    -----------
+    `tensor_list`: tensor, the tensor to be transformed
+    """
+    tensor_list_transformed = []
+    
+    for tensor in tensor_list:
+        tensor_list_transformed.append(tensor)
+    
+    tensor_list = torch.stack(tensor_list_transformed) # creates a torch list
+    
+    return tensor_list
+
+def visualize_images_slices(input, output, type):
+    """
+    Visualizes the input and output images for one single slice
+
+    Parameters:
+    -----------
+    `input`: ndarray, input image
+    `output`: ndarray, output image
+    `type`: string, type of image [lower, middle, upper]
+    """
+    ima = [input, output]
+    tit = ['input', 'output']
+
+    fig, axs = plt.subplots(1, 2, figsize=(10, 8))
+
+    for i in range(2):
+        axs[i].imshow(np.moveaxis(ima[i], [0, 1, 2], [2, 0, 1])[:, :, 1:])
+        axs[i].axis('off')  
+        axs[i].set_title('{} {}'.format(tit[i], type))
+    
+    plt.show()
+
+def compute_loss_slices(masks_input, masks_output, vae_model):
+    """
+    Computes the average loss for lower, middle and upper slices
+
+    Parameters
+    ----------
+    `masks_input`: tensor, input images
+    `masks_output`: tensor, output images
+    `vae_model` : VAE object, the trained VAE model
+    """
+    loss = []
+    
+    for mask_input, masks_output in zip(masks_input, masks_output):
+        loss.append(vae_model.soft_dice_loss(mask_input, masks_output))
+    
+    return np.mean(np.array(loss))
 
 def visualize_generated_images(generated_images):
     """
