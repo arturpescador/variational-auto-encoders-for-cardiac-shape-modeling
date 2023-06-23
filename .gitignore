@@ -2,6 +2,7 @@
 ACDC
 ACDC.zip
 *data.npz
+*.pt
 
 # todo
 setup.py

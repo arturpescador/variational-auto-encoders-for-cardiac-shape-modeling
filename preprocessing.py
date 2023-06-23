@@ -51,7 +51,7 @@ def visualize_image_mask(image, mask, depth_size):
         ax[j].set_title('Slice: {}'.format(j))
     plt.show()
 
-def visualize_mask(mask, show_axis=False):
+def visualize_mask(mask, show_axis=False, labels=None):
     """
     Visualize a 3D segmentation mask.
 
@@ -59,14 +59,18 @@ def visualize_mask(mask, show_axis=False):
     -----------
     `mask`: numpy array, the mask
     `show_axis`: boolean, whether to show the axis or not
+    labels: list of integers, the labels of the different frames
     """
+
+    if type(labels) == type(None):
+        labels = np.arange( mask.shape[-1] )
 
     # Visualize the slices of the ground truth image
     fig, ax = plt.subplots(1, mask.shape[-1], figsize=(25, 8))
     for j in range(mask.shape[-1]):
         ax[j].imshow(mask[:,:,j], cmap='gray')  # show one single slice of each image
         ax[j].axis(show_axis)
-        ax[j].set_title('Slice: {}'.format(j))
+        ax[j].set_title('Slice: {}'.format(labels[j]))
     plt.show()
 
 def visualize_2d_mask(mask):
@@ -254,8 +258,10 @@ def crop_heart_mask(masks):
         max_row = np.max(not_background[:, 0])
         min_col = np.min(not_background[:, 1])
         max_col = np.max(not_background[:, 1])
+        min_channel = np.min(not_background[:, 2])
+        max_channel = np.max(not_background[:, 2])
         s = max(max_row - min_row, max_col - min_col)
-        cropped_mask = mask[min_row:min_row+s, min_col:min_col+s]
+        cropped_mask = mask[min_row:min_row+s, min_col:min_col+s, min_channel:max_channel+1]
         cropped_masks.append( cropped_mask )
     
     return cropped_masks

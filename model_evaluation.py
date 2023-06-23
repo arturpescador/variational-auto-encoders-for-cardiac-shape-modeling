@@ -21,22 +21,45 @@ def visualize(vae_model, input_tensor, device, save=False, path=None):
     `path` : str, the path to save the images
     """
     input = input_tensor.cpu().detach().numpy()
+    input_tensor = input_tensor.to(device)
     output_tensor = vae_model.predict( input_tensor, device )
     output = output_tensor.cpu().detach().numpy()
-    
-    fig, axs = plt.subplots( 2, len(input), figsize=(len(input)*2, 4) )
 
-    if save:
-        plt.suptitle(r'$\lambda =$ {}'.format(vae_model.lamb))
+    loss_tensor = m.VAE.soft_dice_loss( input_tensor, output_tensor, reduction='none')
+    loss = loss_tensor.cpu().detach().numpy()
+
+    # Original images
+    fig, axs = plt.subplots( 1, len(input), figsize=(len(input)*2, 2) )
+    axs = axs.ravel()
+
+    plt.suptitle('Original images')
 
     for i in range(0, len(input)):
-        axs[0, i].imshow( np.moveaxis( input[i], [0,1,2], [2,0,1] )[:,:,1:] )
-        axs[0, i].axis('off')
-        axs[1, i].imshow( np.moveaxis( output[i], [0,1,2], [2,0,1] )[:,:,1:] )
-        axs[1, i].axis('off')
+        axs[i].imshow( np.moveaxis( input[i], [0,1,2], [2,0,1] )[:,:,1:] )
+        axs[i].axis('off')
     
     if save:
-        plt.savefig(path+'images/input_output_lamb{}.png'.format(vae_model.lamb), dpi=300, bbox_inches='tight', pad_inches=0)
+        plt.savefig(path+'images/input_lamb{}.png'.format(vae_model.lamb), dpi=300, bbox_inches='tight', pad_inches=0)
+
+    plt.show()
+
+    fig, axs = plt.subplots( 1, len(input), figsize=(len(input)*2, 2) )
+    axs = axs.ravel()
+
+    # Reconstructed images
+    plt.suptitle(r'Reconstructed images ($\lambda =$ {})'.format(vae_model.lamb))
+
+    for i in range(0, len(input)):
+        axs[i].imshow( np.moveaxis( output[i], [0,1,2], [2,0,1] )[:,:,1:] )
+        # axs[i].set_title( 'DL = {:.2f}'.format(loss[i]) )
+        # axs[i].axis('off')
+        axs[i].set_xlabel( 'DL = {:.2f}'.format(loss[i]) )
+        axs[i].set_xticks([])
+        axs[i].set_yticks([])
+    
+    if save:
+        plt.savefig(path+'images/output_lamb{}.png'.format(vae_model.lamb), dpi=300, bbox_inches='tight', pad_inches=0)
+    
     plt.show()
 
 def visualize_generated_images(generated_samples_tensor, save=False, path=None, lamb=None):
@@ -166,6 +189,44 @@ def evaluate_lambda(train_loader, val_loader, test_loader, lambda_list, device, 
 
         # Save model
         torch.save(model.state_dict(), path+'./model_{}.pt'.format(lamb))
+
+def fit_multivariate_gaussian( lambda_list, train_loader, path, device ):
+    """
+    Fit multivariate Gaussian for different values of the lambda hyperparameter.
+    """
+
+    for lamb in lambda_list:
+
+        # Load saved model
+        model = m.VAE(lamb=lamb).to(device)
+        model.load_state_dict(torch.load(path+'model_{}.pt'.format(lamb), map_location=device))
+
+        # Evaluate latent space
+        z_tensor, _ = generate_latent(model, train_loader, device)
+        z = z_tensor.detach().cpu().numpy()
+
+        # Fit multivariate Gaussian
+        mu = np.mean(z, axis=0).reshape(-1,1)
+        cov = np.cov(z, rowvar=0)
+
+        # Plot mean vector and covariance matrix
+        fig, ax = plt.subplots( 1,2, figsize=(8,3) )
+        ax = ax.ravel()
+
+        lim = np.max( np.abs(mu) ) # symmetric colorbar
+        im = ax[0].matshow(mu, cmap='seismic', vmin=-lim, vmax=lim)
+        plt.colorbar( im )
+
+        lim = np.max( np.abs(cov) )
+        im = ax[1].matshow(cov, cmap='seismic', vmin=-lim, vmax=lim)
+        plt.colorbar( im ) # plt.colorbar( im, format='%.0e' )
+
+        for a in ax:
+            a.axis('off')
+
+        plt.suptitle(r'$\lambda = {}$'.format(lamb))
+
+        plt.show()
 
 def generate_latent(model, dataloader, device):
     """

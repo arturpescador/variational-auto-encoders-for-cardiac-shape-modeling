@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 class VAE(nn.Module):
 
-    def __init__(self, n_rows, n_cols, n_channels, z_dim=32, lamb=1e-2):
+    def __init__(self, n_rows=128, n_cols=128, n_channels=4, z_dim=32, lamb=1e-5):
         super(VAE, self).__init__()
 
         self.n_rows = n_rows
@@ -169,7 +169,8 @@ class VAE(nn.Module):
             z = self.sampling(mu, log_var)
         return self.decoder(z), mu, log_var
     
-    def soft_dice_loss(self, y_true, y_pred, reduction="sum"):
+    @staticmethod
+    def soft_dice_loss(y_true, y_pred, reduction="sum"):
         """
         Calculate the soft Dice loss between the ground truth and predicted masks.
 
