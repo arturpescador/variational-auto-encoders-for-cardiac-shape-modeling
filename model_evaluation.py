@@ -194,6 +194,8 @@ def fit_multivariate_gaussian( lambda_list, train_loader, path, device ):
     """
     Fit multivariate Gaussian for different values of the lambda hyperparameter.
     """
+    mu_list = []
+    cov_list = []
 
     for lamb in lambda_list:
 
@@ -209,16 +211,23 @@ def fit_multivariate_gaussian( lambda_list, train_loader, path, device ):
         mu = np.mean(z, axis=0).reshape(-1,1)
         cov = np.cov(z, rowvar=0)
 
+        mu_list.append(mu)
+        cov_list.append(cov)
+    
+    # standardize colorbar
+    mu_lim = np.max( np.abs(mu_list) )
+    cov_lim = np.max( np.abs(cov_list) )
+
+    for lamb, mu, cov in zip(lambda_list, mu_list, cov_list):
+
         # Plot mean vector and covariance matrix
         fig, ax = plt.subplots( 1,2, figsize=(8,3) )
         ax = ax.ravel()
 
-        lim = np.max( np.abs(mu) ) # symmetric colorbar
-        im = ax[0].matshow(mu, cmap='seismic', vmin=-lim, vmax=lim)
+        im = ax[0].matshow(mu, cmap='seismic', vmin=-mu_lim, vmax=mu_lim)
         plt.colorbar( im )
 
-        lim = np.max( np.abs(cov) )
-        im = ax[1].matshow(cov, cmap='seismic', vmin=-lim, vmax=lim)
+        im = ax[1].matshow(cov, cmap='seismic', vmin=-cov_lim, vmax=cov_lim)
         plt.colorbar( im ) # plt.colorbar( im, format='%.0e' )
 
         for a in ax:
