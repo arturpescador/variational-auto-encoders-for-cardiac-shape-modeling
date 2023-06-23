@@ -351,11 +351,11 @@ def retrieve_2D_labeled_images(model, input_tensor, labels_tensor, device):
 
     # Calculates whether is a lower, middle or upper slice based on the labels
     for position, label in enumerate(labels[:,1]):
-        if (label == 0.):
+        if (label < 0.4):
             lower_idxs.append(position)
         elif (label >= 0.4 and label < 0.6):
             middle_idxs.append(position)
-        elif (label == 1.):
+        elif (label >= 0.6):
             upper_idxs.append(position)
     
     # Computes the images for the positions of the indices
@@ -386,7 +386,7 @@ def transform_tensor_list(tensor_list):
     
     return tensor_list
 
-def visualize_images_slices(input, output, type):
+def visualize_images_slices(input, output, loss, type):
     """
     Visualizes the input and output images for one single slice
 
@@ -394,17 +394,20 @@ def visualize_images_slices(input, output, type):
     -----------
     `input`: ndarray, input image
     `output`: ndarray, output image
-    `type`: string, type of image [lower, middle, upper]
+    `loss`: float, loss of the type of image
+    `type`: string, type of image [Lower, Middle, Upper]
     """
     ima = [input, output]
     tit = ['input', 'output']
 
-    fig, axs = plt.subplots(1, 2, figsize=(10, 8))
+    fig, axs = plt.subplots(1, 2, figsize=(len(input), 2))
+    plt.suptitle('{} Slices Loss = {:.2f}'.format(type, loss))
 
     for i in range(2):
         axs[i].imshow(np.moveaxis(ima[i], [0, 1, 2], [2, 0, 1])[:, :, 1:])
-        axs[i].axis('off')  
-        axs[i].set_title('{} {}'.format(tit[i], type))
+        axs[i].set_xlabel('{}'.format(tit[i]))
+        axs[i].set_xticks([])
+        axs[i].set_yticks([])
     
     plt.show()
 
