@@ -119,7 +119,7 @@ def save_loss(train_loss, val_loss, test_loss, path, filename_sufix):
     `path` : str, the path to save the file.
     `filename_sufix` : str, the filename sufix.
     """
-    np.savez( path+'loss_'+filename_sufix, np.array(train_loss+val_loss+[test_loss]) )
+    np.savez( path+'data/loss_'+filename_sufix, np.array(train_loss+val_loss+[test_loss]) )
 
 def load_loss(path, filename_sufix):
     """
@@ -136,7 +136,7 @@ def load_loss(path, filename_sufix):
     `val_loss` : list, the validation losses over epochs.
     `test_loss` : float, the final test loss.
     """
-    losses = np.load( path+'loss_'+filename_sufix+'.npz' )['arr_0'].tolist()
+    losses = np.load( path+'data/loss_'+filename_sufix+'.npz' )['arr_0'].tolist()
     test_loss = losses.pop()
     train_loss = losses[:len(losses)//2]
     val_loss = losses[len(losses)//2:]
@@ -188,7 +188,7 @@ def evaluate_lambda(train_loader, val_loader, test_loader, lambda_list, device, 
         save_loss(train_loss, val_loss, test_loss, path, str(lamb))
 
         # Save model
-        torch.save(model.state_dict(), path+'./model_{}.pt'.format(lamb))
+        torch.save(model.state_dict(), path+'models/model_{}.pt'.format(lamb))
 
 def fit_multivariate_gaussian( lambda_list, train_loader, path, device ):
     """
@@ -201,7 +201,7 @@ def fit_multivariate_gaussian( lambda_list, train_loader, path, device ):
 
         # Load saved model
         model = m.VAE(lamb=lamb).to(device)
-        model.load_state_dict(torch.load(path+'model_{}.pt'.format(lamb), map_location=device))
+        model.load_state_dict(torch.load(path+'models/model_{}.pt'.format(lamb), map_location=device))
 
         # Evaluate latent space
         z_tensor, _ = generate_latent(model, train_loader, device)
