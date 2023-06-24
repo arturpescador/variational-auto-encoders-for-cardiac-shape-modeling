@@ -4,6 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from scipy.stats import norm
+from sklearn.manifold import TSNE
 
 import model as m
 import preprocessing as pre
@@ -427,3 +428,43 @@ def compute_loss_slices(masks_input, masks_output, vae_model):
         loss.append(vae_model.soft_dice_loss(mask_input, masks_output))
     
     return np.mean(np.array(loss))
+
+def TSNE_transformation(model, data, labels, device):
+
+    # Generate latent representation
+    data_loader = DataLoader(data, batch_size=64, shuffle=False)
+    mu_tensor, _ = generate_latent(model, data_loader, device)
+    mu = mu_tensor.cpu().detach().numpy()
+
+    # Retrieve the labels from lower, middle, and upper slices
+    labels = transform_tensor_list(labels)
+    slice_positions = labels[:, 1].cpu().detach().numpy()
+
+    # Non-linear projection into two dimensions using t-SNE
+    tsne = TSNE(n_components=2, random_state=42)
+    latent_tsne = tsne.fit_transform(mu)
+
+    # Plot the latent space with color map
+    plt.figure()
+    plt.scatter(latent_tsne[:, 0], latent_tsne[:, 1], c=slice_positions, cmap='viridis')
+    plt.colorbar(label='Slice Position')
+    plt.xlabel('1st TSNE component')
+    plt.ylabel('2nd TSNE component')
+    plt.title('Latent Space Visualization')
+    plt.show()
+
+    # Aggregate into lower, middle, upper slices
+    lower_indices = np.where(slice_positions <= 0.3)[0]
+    middle_indices = np.where(np.logical_and(slice_positions > 0.3, slice_positions <= 0.7))[0]
+    upper_indices = np.where(slice_positions > 0.7)[0]
+
+    # Plot the latent space with color map
+    plt.figure()
+    plt.scatter(latent_tsne[lower_indices, 0], latent_tsne[lower_indices, 1], c='blue', label='Lower')
+    plt.scatter(latent_tsne[middle_indices, 0], latent_tsne[middle_indices, 1], c='green', label='Middle')
+    plt.scatter(latent_tsne[upper_indices, 0], latent_tsne[upper_indices, 1], c='red', label='Upper')
+    plt.xlabel('1st TSNE component')
+    plt.ylabel('2nd TSNE component')
+    plt.title('Latent Space Visualization')
+    plt.legend()
+    plt.show()
