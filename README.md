@@ -20,11 +20,11 @@ The project consists of the following files:
 
 - `model_evaluation.py`: implementation of the methods required to evaluate the model.
 
-- `notebook.ipynb`: jupyter notebook containing the code and explanations for the project.
+- `report.ipynb`: jupyter notebook containing the code and explanations for the project.
 
 ## Contributors
 
-This project was developed by the following group members as part of the Computational Photography / Patch Methods course (IMA206) at Télécom-Paris for the academic year 2022/2023, under the supervision of Loïc Le Folgoc:
+This project was developed by the following group members as part of the Computational Photography / Patch Methods course (IMA206) at Télécom-Paris for the academic year 2022/2023, under the supervision of Loïc Le Folgoc and Elsa Angelini:
 
 - Alice Valença De Lorenci
 - Artur Dandolini Pescador
