@@ -2,7 +2,7 @@
 
 This project aims to implement a convolutional Variational Autoencoder (VAE) to create a mapping between a latent space of cardiac shape and 2D segmentation masks of the left ventricle, right ventricle, and myocardium. The VAE takes 4-channel 2D images as input, where each image represents the segmentation mask of a cardiac MRI slice, and the channels correspond to the segmentation masks of the background, left ventricle, right ventricle, and myocardium. The objective is to evaluate the quality of the reconstruction of the segmentation masks.
 
-## Project Articles
+## References
 
 The main articles consulted during the development of this project are:
 
@@ -39,14 +39,6 @@ The dataset used for this project is sourced from the [ACDC Challenge](https://a
 1. Right ventricle cavity (RV)
 2. Myocardium (MY)
 3. Left ventricle cavity (LV)
-
-### Citation
-
-The dataset used in this challenge is the ACDC (Automated Cardiac Diagnosis Challenge) database:
-
-O. Bernard, A. Lalande, C. Zotti, F. Cervenansky, et al. "Deep Learning Techniques for Automatic MRI Cardiac Multi-structures Segmentation and Diagnosis: Is the Problem Solved?" in IEEE Transactions on Medical Imaging, vol. 37, no. 11, pp. 2514-2525, Nov. 2018.
-
-More information about the ACDC database can be found on the official website: [ACDC Challenge](https://acdc.creatis.insa-lyon.fr/)
 
 
 
